@@ -4,7 +4,7 @@ import request from "supertest";
 
 import { AppModule } from "../src/app.module";
 
-describe("Health (e2e)", () => {
+describe("Auth and tenant (e2e)", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -20,11 +20,19 @@ describe("Health (e2e)", () => {
     await app.close();
   });
 
-  it("GET /health returns ok", async () => {
+  it("rejects /me without auth", async () => {
     await request(app.getHttpServer())
-      .get("/health")
+      .get("/me")
       .set("x-tenant-id", "t1")
+      .expect(401);
+  });
+
+  it("returns tenantId for authenticated requests", async () => {
+    await request(app.getHttpServer())
+      .get("/me")
+      .set("x-tenant-id", "t1")
+      .set("x-user-id", "u1")
       .expect(200)
-      .expect("ok");
+      .expect({ tenantId: "t1", userId: "u1" });
   });
 });
