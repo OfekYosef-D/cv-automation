@@ -17,6 +17,9 @@ importers:
       '@cv/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@cv/matching':
+        specifier: workspace:*
+        version: link:../../packages/matching
       '@nestjs/common':
         specifier: ^10.4.7
         version: 10.4.22(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -117,6 +120,15 @@ importers:
       prisma:
         specifier: ^6.1.0
         version: 6.19.2(typescript@5.9.3)
+
+  packages/matching:
+    devDependencies:
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@25.1.0)(jsdom@24.1.3)
 
   packages/shared:
     devDependencies:
