@@ -8,10 +8,18 @@ import { ArtefactsController } from "./artefacts/artefacts.controller";
 import { ArtefactsService } from "./artefacts/artefacts.service";
 import { MatchingController } from "./matching/matching.controller";
 import { MatchingService } from "./matching/matching.service";
+import { ApprovalsController } from "./approvals/approvals.controller";
+import { ApprovalsService } from "./approvals/approvals.service";
 
 @Module({
-  controllers: [HealthController, MeController, ArtefactsController, MatchingController],
-  providers: [AuthGuard, ArtefactsService, MatchingService]
+  controllers: [
+    HealthController,
+    MeController,
+    ArtefactsController,
+    MatchingController,
+    ApprovalsController
+  ],
+  providers: [AuthGuard, ArtefactsService, MatchingService, ApprovalsService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
