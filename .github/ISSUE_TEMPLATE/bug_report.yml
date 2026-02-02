@@ -1,0 +1,28 @@
+name: Bug report
+description: Report a defect or regression
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug
+      placeholder: Steps to reproduce and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/Errors
+      description: Paste relevant logs or screenshots
+      render: shell
+    validations:
+      required: false
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node version, pnpm version
+      placeholder: Windows 11, Node 20, pnpm 9
+    validations:
+      required: true
