@@ -1,0 +1,12 @@
+---
+description: NestJS API patterns
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# NestJS Conventions
+
+- Controllers handle HTTP; services contain business logic.
+- Use DTOs for request/response validation.
+- Inject `prisma` from `@cv/db` for DB access.
+- Tenant context: `request.tenantId` (set by middleware).

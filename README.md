@@ -17,9 +17,15 @@ MVP monorepo for CV-driven job discovery, matching, and approval workflows.
 4. Install dependencies: `pnpm install`.
 
 ### Run apps
-- API: `pnpm -C apps/api start:dev`
-- Web: `pnpm -C apps/web dev`
-- Worker: `pnpm -C apps/worker dev`
+- **All**: `pnpm dev` (API + web + worker)
+- API only: `pnpm dev:api`
+- Web only: `pnpm dev:web`
+- Worker only: `pnpm dev:worker`
+
+### Database
+- Start Postgres: `pnpm docker:up`
+- Migrate: `pnpm db:migrate`
+- Prisma Studio: `pnpm db:studio`
 
 ### Tests
 - All: `pnpm test`
@@ -36,9 +42,12 @@ MVP monorepo for CV-driven job discovery, matching, and approval workflows.
 - packages/shared
 
 ## Documentation
+- **Agent handoff**: docs/HANDOFF.md (for AI agents / new sessions)
+- Onboarding: docs/onboarding.md
 - Architecture: docs/architecture.md
 - Runbook: docs/runbook.md
 - Decisions: docs/decisions/
+- Branch protection: docs/BRANCH_PROTECTION.md
 
 ## Workflow
 - Create an issue
