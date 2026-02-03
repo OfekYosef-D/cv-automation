@@ -5,9 +5,26 @@
   "scripts": {
     "test": "turbo test",
     "lint": "turbo lint",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "dev": "node scripts/validate-env.js && concurrently -n api,web,worker -c blue,magenta,yellow \"pnpm --filter @cv/api dev\" \"pnpm --filter @cv/web dev\" \"pnpm --filter @cv/worker dev\"",
+    "dev:api": "pnpm --filter @cv/api dev",
+    "dev:web": "pnpm --filter @cv/web dev",
+    "dev:worker": "pnpm --filter @cv/worker dev",
+    "db:generate": "pnpm --filter @cv/db generate",
+    "db:migrate": "pnpm --filter @cv/db migrate",
+    "db:studio": "pnpm --filter @cv/db exec prisma studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "test:all": "turbo test",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "concurrently": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "turbo": "^2.3.3"
+  },
+  "lint-staged": {
+    "apps/web/**/*.{ts,tsx}": "eslint --fix"
   }
 }

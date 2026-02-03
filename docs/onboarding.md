@@ -5,7 +5,7 @@ Welcome! This guide helps you continue work quickly and safely.
 ## Prerequisites
 - Node.js 20+
 - pnpm 9
-- Docker Desktop
+- Docker Desktop (for Postgres)
 
 ## First-time setup
 1. Copy `.env.example` to `.env` and set `DATABASE_URL`.
@@ -14,9 +14,8 @@ Welcome! This guide helps you continue work quickly and safely.
 4. Generate Prisma client: `pnpm -C packages/db prisma generate`.
 
 ## Run the apps
-- API: `pnpm -C apps/api start:dev`
-- Web: `pnpm -C apps/web dev`
-- Worker: `pnpm -C apps/worker dev`
+- **All**: `pnpm dev` (API + web + worker)
+- Or individually: `pnpm dev:api`, `pnpm dev:web`, `pnpm dev:worker`
 
 ## Run tests
 - All: `pnpm test`

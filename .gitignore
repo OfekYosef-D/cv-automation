@@ -8,3 +8,24 @@ coverage/
 !.env.example
 .next/
 .worktrees/
+
+# Skills (project-local; use --global for shared)
+.agents/
+.codex/
+.junie/
+.github/skills/
+.cursor/skills/
+
+# Lockfile conflict: pnpm monorepo uses pnpm-lock.yaml
+package-lock.json
+
+# Compiled output (NestJS emits .js alongside .ts)
+apps/api/src/**/*.js
+apps/api/test/**/*.js
+packages/db/*.js
+
+# IDE, OS, misc
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo

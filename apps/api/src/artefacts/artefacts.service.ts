@@ -1,7 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-import { Prisma } from "@prisma/client";
-
 import { prisma } from "@cv/db";
 
 export interface CreateArtefactInput {
@@ -10,7 +8,7 @@ export interface CreateArtefactInput {
   cvVersionId: string;
   promptVersion: string;
   model: string;
-  claimsUsed: Prisma.InputJsonValue;
+  claimsUsed: object;
   status: "DRAFT" | "APPROVED" | "REJECTED";
   content: string;
 }
