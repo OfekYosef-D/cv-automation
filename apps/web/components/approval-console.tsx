@@ -29,7 +29,8 @@ export function ApprovalConsole(): JSX.Element {
   const searchParams = useSearchParams();
 
   // Extract URL params with validation
-  const page = Number(searchParams.get("page")) || 1;
+  const parsedPage = parseInt(searchParams.get("page") ?? "", 10);
+  const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage);
   const statusParam = searchParams.get("status");
   const statusFilter: ApprovalStatus = isValidApprovalStatus(statusParam) ? statusParam : "ALL";
 
