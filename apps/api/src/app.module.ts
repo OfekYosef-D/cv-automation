@@ -10,6 +10,8 @@ import { MatchingController } from "./matching/matching.controller";
 import { MatchingService } from "./matching/matching.service";
 import { ApprovalsController } from "./approvals/approvals.controller";
 import { ApprovalsService } from "./approvals/approvals.service";
+import { JobsController } from "./jobs/jobs.controller";
+import { JobsService } from "./jobs/jobs.service";
 
 @Module({
   controllers: [
@@ -17,9 +19,10 @@ import { ApprovalsService } from "./approvals/approvals.service";
     MeController,
     ArtefactsController,
     MatchingController,
-    ApprovalsController
+    ApprovalsController,
+    JobsController
   ],
-  providers: [AuthGuard, ArtefactsService, MatchingService, ApprovalsService]
+  providers: [AuthGuard, ArtefactsService, MatchingService, ApprovalsService, JobsService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
