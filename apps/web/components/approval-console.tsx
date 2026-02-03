@@ -18,14 +18,20 @@ interface Job {
 }
 
 const PAGE_SIZE = 20;
+const VALID_STATUSES: ApprovalStatus[] = ["ALL", "PENDING", "APPROVED", "REJECTED", "SNOOZED"];
+
+function isValidApprovalStatus(value: string | null): value is ApprovalStatus {
+  return value !== null && VALID_STATUSES.includes(value as ApprovalStatus);
+}
 
 export function ApprovalConsole(): JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Extract URL params
+  // Extract URL params with validation
   const page = Number(searchParams.get("page")) || 1;
-  const statusFilter = (searchParams.get("status") as ApprovalStatus) || "ALL";
+  const statusParam = searchParams.get("status");
+  const statusFilter: ApprovalStatus = isValidApprovalStatus(statusParam) ? statusParam : "ALL";
 
   // State
   const [jobs, setJobs] = useState<Job[]>([]);

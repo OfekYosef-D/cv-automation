@@ -38,6 +38,7 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 ## Project Status Summary
 
 ### Completed (Phase 1)
+
 | Issue | Title | Status |
 |-------|-------|--------|
 | #1 | API: jobs list endpoint with paging/filtering | CLOSED |
@@ -48,6 +49,7 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 | #6 | Web: optimistic UX tests | CLOSED |
 
 ### Open (Phase 2)
+
 | Issue | Title | Priority |
 |-------|-------|----------|
 | #8 | API: Add matching endpoint to score jobs against CV | High |
