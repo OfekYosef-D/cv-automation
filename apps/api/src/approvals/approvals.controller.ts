@@ -16,4 +16,16 @@ export class ApprovalsController {
     const tenantId = request.tenantId ?? "";
     return this.approvalsService.approve(tenantId, body.jobId);
   }
+
+  @Post("reject")
+  reject(@Req() request: Request, @Body() body: ApproveBody) {
+    const tenantId = request.tenantId ?? "";
+    return this.approvalsService.reject(tenantId, body.jobId);
+  }
+
+  @Post("snooze")
+  snooze(@Req() request: Request, @Body() body: ApproveBody) {
+    const tenantId = request.tenantId ?? "";
+    return this.approvalsService.snooze(tenantId, body.jobId);
+  }
 }
