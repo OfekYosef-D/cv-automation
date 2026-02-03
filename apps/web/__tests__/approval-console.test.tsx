@@ -39,7 +39,10 @@ describe("Approval Console", () => {
     // Verify API was called
     expect(api.getJobs).toHaveBeenCalled();
 
-    expect(await screen.findByText("Fullstack Developer")).toBeInTheDocument();
+    // Job title appears twice (in list and detail panel)
+    const jobTitles = await screen.findAllByText("Fullstack Developer");
+    expect(jobTitles.length).toBeGreaterThanOrEqual(1);
+
     expect(await screen.findByText("Tailored summary")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();

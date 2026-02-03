@@ -17,6 +17,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": ["@testing-library/jest-dom"],
     "plugins": [
       {
         "name": "next"
@@ -27,7 +28,9 @@
     "next-env.d.ts",
     "app",
     "components",
+    "lib",
     "__tests__",
+    "vitest.setup.ts",
     ".next/types/**/*.ts"
   ],
   "exclude": [

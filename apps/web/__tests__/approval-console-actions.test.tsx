@@ -9,14 +9,19 @@ vi.mock("../lib/api", () => ({
   snoozeJob: vi.fn(async () => ({}))
 }));
 
+const mockJobs = [
+  {
+    id: "job-1",
+    title: "Fullstack Developer",
+    location: "Remote",
+    approvalStatus: "PENDING",
+    latestArtefact: { id: "art-1", status: "DRAFT", content: "Tailored summary" }
+  }
+];
+
 describe("Approval Console actions", () => {
   it("updates status optimistically after approve", async () => {
-    render(
-      <ApprovalConsole
-        job={{ id: "job-1", title: "Fullstack Developer", location: "Remote" }}
-        artefact={{ id: "art-1", status: "DRAFT", content: "Tailored summary" }}
-      />
-    );
+    render(<ApprovalConsole jobs={mockJobs} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
@@ -26,12 +31,7 @@ describe("Approval Console actions", () => {
   });
 
   it("updates status optimistically after reject", async () => {
-    render(
-      <ApprovalConsole
-        job={{ id: "job-1", title: "Fullstack Developer", location: "Remote" }}
-        artefact={{ id: "art-1", status: "DRAFT", content: "Tailored summary" }}
-      />
-    );
+    render(<ApprovalConsole jobs={mockJobs} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
 
@@ -41,12 +41,7 @@ describe("Approval Console actions", () => {
   });
 
   it("updates status optimistically after snooze", async () => {
-    render(
-      <ApprovalConsole
-        job={{ id: "job-1", title: "Fullstack Developer", location: "Remote" }}
-        artefact={{ id: "art-1", status: "DRAFT", content: "Tailored summary" }}
-      />
-    );
+    render(<ApprovalConsole jobs={mockJobs} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Snooze" }));
 
