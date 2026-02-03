@@ -19,7 +19,12 @@ const vars = Object.fromEntries(
     .filter((line) => line.includes("=") && !line.trim().startsWith("#"))
     .map((line) => {
       const [key, ...rest] = line.split("=");
-      return [key.trim(), rest.join("=").trim().replace(/^["']|["']$/g, "")];
+      const rawValue = rest.join("=").trim();
+      // Remove inline comments (whitespace + #) but preserve # inside quoted values
+      const valueWithoutComment = rawValue.replace(/\s+#.*$/, "");
+      // Strip surrounding quotes
+      const value = valueWithoutComment.trim().replace(/^["']|["']$/g, "");
+      return [key.trim(), value];
     })
 );
 

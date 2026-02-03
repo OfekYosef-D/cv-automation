@@ -1,6 +1,8 @@
 import { ApprovalConsole } from "../components/approval-console";
 import { getJobs } from "../lib/api";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+
 export default async function HomePage() {
   let jobsResponse;
 
@@ -13,7 +15,7 @@ export default async function HomePage() {
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">
           <p className="text-red-800">
             Failed to load jobs. Please ensure the API is running at{" "}
-            <code className="bg-red-100 px-1 rounded">localhost:3001</code>
+            <code className="bg-red-100 px-1 rounded">{API_BASE_URL}</code>
           </p>
           <p className="text-red-600 text-sm mt-2">
             {error instanceof Error ? error.message : "Unknown error"}

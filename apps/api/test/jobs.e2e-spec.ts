@@ -213,6 +213,12 @@ describe("Jobs (e2e)", () => {
     });
 
     await request(app.getHttpServer())
+      .post("/approvals/approve")
+      .set("x-tenant-id", tenant.id)
+      .send({ jobId: job.id })
+      .expect(201);
+
+    await request(app.getHttpServer())
       .post("/approvals/reject")
       .set("x-tenant-id", tenant.id)
       .send({ jobId: job.id })
@@ -229,7 +235,9 @@ describe("Jobs (e2e)", () => {
       orderBy: { createdAt: "desc" }
     });
 
+    expect(approvals).toHaveLength(3);
     expect(approvals[0].status).toBe("SNOOZED");
     expect(approvals[1].status).toBe("REJECTED");
+    expect(approvals[2].status).toBe("APPROVED");
   });
 });

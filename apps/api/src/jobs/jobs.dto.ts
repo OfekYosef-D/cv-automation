@@ -1,3 +1,6 @@
+import { Type } from "class-transformer";
+import { IsIn, IsInt, IsOptional, Max, Min } from "class-validator";
+
 export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | "SNOOZED";
 
 export interface JobListItemDto {
@@ -20,10 +23,26 @@ export interface JobListResponseDto {
   total: number;
 }
 
-export interface JobListQueryDto {
+export class JobListQueryDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Type(() => Number)
   page?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  @Type(() => Number)
   pageSize?: number;
+
+  @IsOptional()
+  @IsIn(["seenAt"])
   sort?: "seenAt";
+
+  @IsOptional()
+  @IsIn(["PENDING", "APPROVED", "REJECTED", "SNOOZED"])
   status?: ApprovalStatus;
 }
 

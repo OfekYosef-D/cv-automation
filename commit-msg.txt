@@ -1,0 +1,16 @@
+fix: address additional code review feedback
+
+API improvements:
+- Wrap approval operations in Prisma transactions for atomicity
+- Add tenantId validation with BadRequestException
+- Add global ValidationPipe with transform:true
+- Convert JobListQueryDto to class with class-validator decorators
+- Add approve endpoint call to e2e test
+
+Web improvements:
+- Add "use client" directive to Button component
+- Use env variable for API URL in error message
+- Revert manual edit in next-env.d.ts
+
+Scripts:
+- Handle inline comments in validate-env.js parser

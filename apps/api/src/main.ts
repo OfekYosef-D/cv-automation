@@ -2,6 +2,7 @@ import { config } from "dotenv";
 
 config();
 
+import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
@@ -22,6 +23,9 @@ async function bootstrap() {
     throw new Error(`Invalid PORT value: ${process.env.PORT}`);
   }
   const app = await NestFactory.create(AppModule);
+
+  // Enable global validation with transformation
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
 
   // Enable CORS for local development
   app.enableCors({
