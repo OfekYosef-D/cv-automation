@@ -23,7 +23,7 @@ const STATUS_OPTIONS: { value: ApprovalStatus; label: string }[] = [
   { value: "SNOOZED", label: "Snoozed" },
 ];
 
-export function StatusFilter({ value, onChange }: StatusFilterProps): JSX.Element {
+export function StatusFilter({ value, onChange }: StatusFilterProps) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ApprovalStatus)}>
       <SelectTrigger className="w-40">

@@ -24,7 +24,7 @@ function isValidApprovalStatus(value: string | null): value is ApprovalStatus {
   return value !== null && VALID_STATUSES.includes(value as ApprovalStatus);
 }
 
-export function ApprovalConsole(): JSX.Element {
+export function ApprovalConsole() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

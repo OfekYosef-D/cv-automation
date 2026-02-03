@@ -9,7 +9,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export function Pagination({ page, pageSize, total, onPageChange }: PaginationProps): JSX.Element {
+export function Pagination({ page, pageSize, total, onPageChange }: PaginationProps) {
   // Don't render pagination if there's nothing to paginate
   if (total === 0) {
     return <></>;
