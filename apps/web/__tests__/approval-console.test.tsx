@@ -1,8 +1,17 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
-import HomePage from "../app/page";
+import { ApprovalConsole } from "../components/approval-console";
 import * as api from "../lib/api";
+
+// Mock next/navigation
+const mockPush = vi.fn();
+const mockSearchParams = new URLSearchParams();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+  useSearchParams: () => mockSearchParams
+}));
 
 vi.mock("../lib/api", () => ({
   getJobs: vi.fn(async () => ({
@@ -17,7 +26,8 @@ vi.mock("../lib/api", () => ({
       }
     ],
     page: 1,
-    pageSize: 20
+    pageSize: 20,
+    total: 1
   })),
   getJobDetail: vi.fn(async () => ({
     id: "job-1",
@@ -33,11 +43,17 @@ vi.mock("../lib/api", () => ({
 }));
 
 describe("Approval Console", () => {
-  it("renders dynamic job data and action buttons", async () => {
-    render(await HomePage());
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-    // Verify API was called
-    expect(api.getJobs).toHaveBeenCalled();
+  it("renders dynamic job data and action buttons", async () => {
+    render(<ApprovalConsole />);
+
+    // Wait for loading to complete and verify API was called
+    await waitFor(() => {
+      expect(api.getJobs).toHaveBeenCalled();
+    });
 
     // Job title appears twice (in list and detail panel)
     const jobTitles = await screen.findAllByText("Fullstack Developer");
