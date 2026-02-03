@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { approveJob, rejectJob, snoozeJob, getJobs, type JobListResponse } from "../lib/api";
 import { Button } from "./ui/button";
@@ -44,8 +44,14 @@ export function ApprovalConsole() {
   const [error, setError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Request ID guard to prevent race conditions with out-of-order responses
+  const requestIdRef = useRef(0);
+
   // Fetch jobs when page or filter changes
   const fetchJobsData = useCallback(async (): Promise<void> => {
+    // Increment request ID and capture it for this request
+    const currentRequestId = ++requestIdRef.current;
+
     setIsLoading(true);
     setFetchError(null);
     try {
@@ -58,6 +64,12 @@ export function ApprovalConsole() {
         params.status = statusFilter;
       }
       const response: JobListResponse = await getJobs(params);
+
+      // Only update state if this is still the latest request
+      if (currentRequestId !== requestIdRef.current) {
+        return; // Stale response, ignore it
+      }
+
       setJobs(response.jobs);
       setTotal(response.total);
       // Select first job if none selected or selected job not in new list
@@ -70,16 +82,29 @@ export function ApprovalConsole() {
         setSelectedJobId(null);
       }
     } catch {
+      // Only update error state if this is still the latest request
+      if (currentRequestId !== requestIdRef.current) {
+        return;
+      }
       setFetchError("Failed to load jobs");
       setJobs([]);
       setTotal(0);
     } finally {
-      setIsLoading(false);
+      // Only clear loading state if this is still the latest request
+      if (currentRequestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [page, statusFilter]);
 
   useEffect(() => {
     fetchJobsData();
+
+    // Cleanup: invalidate any in-flight requests on unmount or when deps change
+    return () => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally incrementing ref to cancel stale requests
+      requestIdRef.current++;
+    };
   }, [fetchJobsData]);
 
   // Update URL helper
