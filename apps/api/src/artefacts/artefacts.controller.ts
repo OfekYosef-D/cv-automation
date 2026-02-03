@@ -9,7 +9,7 @@ interface CreateArtefactBody {
   cvVersionId: string;
   promptVersion: string;
   model: string;
-  claimsUsed: Prisma.InputJsonValue;
+  claimsUsed: Prisma.JsonValue;
   status: "DRAFT" | "APPROVED" | "REJECTED";
   content: string;
 }

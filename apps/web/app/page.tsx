@@ -9,6 +9,9 @@ export default async function HomePage() {
   try {
     jobsResponse = await getJobs({ page: 1, pageSize: 20 });
   } catch (error) {
+    // Log full error details server-side for debugging
+    console.error("Failed to fetch jobs:", error);
+
     return (
       <main className="p-8 font-sans">
         <h1 className="text-2xl font-bold mb-6">Approval Console</h1>
@@ -17,9 +20,7 @@ export default async function HomePage() {
             Failed to load jobs. Please ensure the API is running at{" "}
             <code className="bg-red-100 px-1 rounded">{API_BASE_URL}</code>
           </p>
-          <p className="text-red-600 text-sm mt-2">
-            {error instanceof Error ? error.message : "Unknown error"}
-          </p>
+          <p className="text-red-600 text-sm mt-2">An unexpected error occurred. Please try again later.</p>
         </div>
       </main>
     );

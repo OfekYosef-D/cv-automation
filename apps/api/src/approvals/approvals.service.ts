@@ -1,11 +1,12 @@
 import { Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@cv/db";
 
 @Injectable()
 export class ApprovalsService {
   async approve(tenantId: string, jobId: string) {
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const approval = await tx.approval.create({
         data: {
           tenantId,
@@ -27,7 +28,7 @@ export class ApprovalsService {
   }
 
   async reject(tenantId: string, jobId: string) {
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const approval = await tx.approval.create({
         data: { tenantId, jobId, status: "REJECTED" }
       });
@@ -41,7 +42,7 @@ export class ApprovalsService {
   }
 
   async snooze(tenantId: string, jobId: string) {
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const approval = await tx.approval.create({
         data: { tenantId, jobId, status: "SNOOZED" }
       });
