@@ -1,27 +1,26 @@
-export default function HomePage() {
+import { ApprovalConsole } from "../components/approval-console";
+import { getJobs, getJobDetail } from "../lib/api";
+
+export default async function HomePage() {
+  const jobsResponse = await getJobs({ page: 1, pageSize: 20 });
+  const firstJob = jobsResponse.jobs[0];
+
+  if (!firstJob) {
+    return (
+      <main style={{ padding: "2rem", fontFamily: "system-ui" }}>
+        <h1>Approval Console</h1>
+        <p>No jobs available</p>
+      </main>
+    );
+  }
+
+  const jobDetail = await getJobDetail(firstJob.id);
+  const firstArtefact = jobDetail.artefacts[0] ?? null;
+
   return (
     <main style={{ padding: "2rem", fontFamily: "system-ui" }}>
       <h1>Approval Console</h1>
-      <section style={{ display: "flex", gap: "2rem" }}>
-        <div style={{ flex: 1 }}>
-          <h2>Jobs</h2>
-          <ul>
-            <li>
-              <strong>Fullstack Developer</strong>
-              <div>Remote · Mid</div>
-            </li>
-          </ul>
-        </div>
-        <div style={{ flex: 1 }}>
-          <h2>Artefacts</h2>
-          <p>Tailored summary</p>
-          <div>
-            <button type="button">Approve</button>
-            <button type="button">Reject</button>
-            <button type="button">Snooze</button>
-          </div>
-        </div>
-      </section>
+      <ApprovalConsole job={firstJob} artefact={firstArtefact} />
     </main>
   );
 }

@@ -1,14 +1,48 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import HomePage from "../app/page";
+import * as api from "../lib/api";
+
+vi.mock("../lib/api", () => ({
+  getJobs: vi.fn(async () => ({
+    jobs: [
+      {
+        id: "job-1",
+        title: "Fullstack Developer",
+        location: "Remote",
+        postedAt: null,
+        approvalStatus: "PENDING",
+        latestArtefact: { id: "art-1", status: "DRAFT", content: "Tailored summary" }
+      }
+    ],
+    page: 1,
+    pageSize: 20
+  })),
+  getJobDetail: vi.fn(async () => ({
+    id: "job-1",
+    title: "Fullstack Developer",
+    description: "Build web apps",
+    location: "Remote",
+    postedAt: null,
+    artefacts: [{ id: "art-1", status: "DRAFT", content: "Tailored summary" }]
+  })),
+  approveJob: vi.fn(async () => ({})),
+  rejectJob: vi.fn(async () => ({})),
+  snoozeJob: vi.fn(async () => ({}))
+}));
 
 describe("Approval Console", () => {
-  it("renders job list and artefact panel", () => {
-    render(<HomePage />);
+  it("renders dynamic job data and action buttons", async () => {
+    render(await HomePage());
 
-    expect(screen.getByText("Jobs")).toBeInTheDocument();
-    expect(screen.getByText("Fullstack Developer")).toBeInTheDocument();
-    expect(screen.getByText("Tailored summary")).toBeInTheDocument();
+    // Verify API was called
+    expect(api.getJobs).toHaveBeenCalled();
+
+    expect(await screen.findByText("Fullstack Developer")).toBeInTheDocument();
+    expect(await screen.findByText("Tailored summary")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Snooze" })).toBeInTheDocument();
   });
 });
