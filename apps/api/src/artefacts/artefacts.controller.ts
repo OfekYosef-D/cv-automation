@@ -1,6 +1,5 @@
 import { Body, Controller, Post, Req } from "@nestjs/common";
 import { Request } from "express";
-import { Prisma } from "@prisma/client";
 
 import { ArtefactsService, CreateArtefactInput } from "./artefacts.service";
 
@@ -9,7 +8,7 @@ interface CreateArtefactBody {
   cvVersionId: string;
   promptVersion: string;
   model: string;
-  claimsUsed: Prisma.JsonValue;
+  claimsUsed: object;
   status: "DRAFT" | "APPROVED" | "REJECTED";
   content: string;
 }

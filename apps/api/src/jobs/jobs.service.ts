@@ -1,12 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { Job, AgentArtefact, Approval } from "@prisma/client";
 import { prisma } from "@cv/db";
 import { ApprovalStatus, JobDetailDto, JobListQueryDto, JobListResponseDto } from "./jobs.dto";
-
-type JobWithRelations = Job & {
-  artefacts: AgentArtefact[];
-  approvals: Approval[];
-};
 
 @Injectable()
 export class JobsService {
@@ -16,7 +10,7 @@ export class JobsService {
     const statusFilter = query.status;
 
     // Fetch all jobs for tenant (status filter requires computing from relation)
-    const jobs: JobWithRelations[] = await prisma.job.findMany({
+    const jobs = await prisma.job.findMany({
       where: { tenantId },
       orderBy: { seenAt: "desc" },
       include: {
@@ -26,7 +20,7 @@ export class JobsService {
     });
 
     // Map to DTOs with computed approval status
-    const mapped = jobs.map((job: JobWithRelations) => ({
+    const mapped = jobs.map((job) => ({
       id: job.id,
       title: job.title,
       location: job.location,
@@ -42,9 +36,7 @@ export class JobsService {
     }));
 
     // Filter by status BEFORE pagination
-    const filtered = statusFilter
-      ? mapped.filter((job: { approvalStatus: ApprovalStatus }) => job.approvalStatus === statusFilter)
-      : mapped;
+    const filtered = statusFilter ? mapped.filter((job) => job.approvalStatus === statusFilter) : mapped;
 
     // Apply pagination to filtered results
     const start = (page - 1) * pageSize;
@@ -69,7 +61,7 @@ export class JobsService {
       description: job.description,
       location: job.location,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
-      artefacts: job.artefacts.map((artefact: AgentArtefact) => ({
+      artefacts: job.artefacts.map((artefact) => ({
         id: artefact.id,
         status: artefact.status,
         content: artefact.content
