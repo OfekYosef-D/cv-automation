@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { prisma } from "@cv/db";
-import { ApprovalStatus, JobListQueryDto, JobListResponseDto } from "./jobs.dto";
+import { ApprovalStatus, JobDetailDto, JobListQueryDto, JobListResponseDto } from "./jobs.dto";
 
 @Injectable()
 export class JobsService {
@@ -40,5 +40,29 @@ export class JobsService {
       : mapped;
 
     return { jobs: jobsFiltered, page, pageSize };
+  }
+
+  async getJob(tenantId: string, jobId: string): Promise<JobDetailDto | null> {
+    const job = await prisma.job.findFirst({
+      where: { id: jobId, tenantId },
+      include: { artefacts: { orderBy: { createdAt: "desc" } } }
+    });
+
+    if (!job) {
+      return null;
+    }
+
+    return {
+      id: job.id,
+      title: job.title,
+      description: job.description,
+      location: job.location,
+      postedAt: job.postedAt ? job.postedAt.toISOString() : null,
+      artefacts: job.artefacts.map((artefact) => ({
+        id: artefact.id,
+        status: artefact.status,
+        content: artefact.content
+      }))
+    };
   }
 }

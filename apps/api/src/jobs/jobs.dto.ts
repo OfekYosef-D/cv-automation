@@ -25,3 +25,16 @@ export interface JobListQueryDto {
   sort?: "seenAt";
   status?: ApprovalStatus;
 }
+
+export interface JobDetailDto {
+  id: string;
+  title: string;
+  description: string;
+  location: string | null;
+  postedAt: string | null;
+  artefacts: Array<{
+    id: string;
+    status: "DRAFT" | "APPROVED" | "REJECTED";
+    content: string;
+  }>;
+}

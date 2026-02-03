@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req } from "@nestjs/common";
+import { Controller, Get, NotFoundException, Param, Query, Req } from "@nestjs/common";
 import { Request } from "express";
 
 import { JobsService } from "./jobs.service";
@@ -12,5 +12,17 @@ export class JobsController {
   list(@Req() request: Request, @Query() query: JobListQueryDto) {
     const tenantId = request.tenantId ?? "";
     return this.jobsService.listJobs(tenantId, query);
+  }
+
+  @Get(":jobId")
+  async detail(@Req() request: Request, @Param("jobId") jobId: string) {
+    const tenantId = request.tenantId ?? "";
+    const job = await this.jobsService.getJob(tenantId, jobId);
+
+    if (!job) {
+      throw new NotFoundException();
+    }
+
+    return job;
   }
 }

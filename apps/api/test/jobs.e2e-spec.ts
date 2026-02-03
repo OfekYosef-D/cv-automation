@@ -122,4 +122,59 @@ describe("Jobs (e2e)", () => {
     expect(response.body.jobs).toHaveLength(1);
     expect(response.body.jobs[0].approvalStatus).toBe("REJECTED");
   });
+
+  it("fetches job detail with artefacts", async () => {
+    const tenant = await prisma.tenant.create({ data: { name: "Gamma" } });
+    const source = await prisma.jobSource.create({
+      data: {
+        tenantId: tenant.id,
+        type: "greenhouse",
+        name: "Greenhouse",
+        config: { baseUrl: "https://boards.greenhouse.io" }
+      }
+    });
+
+    const job = await prisma.job.create({
+      data: {
+        tenantId: tenant.id,
+        jobSourceId: source.id,
+        externalId: "job-3",
+        title: "Data Engineer",
+        description: "Build pipelines",
+        location: "Hybrid",
+        url: "https://example.com/job-3",
+        contentHash: "hash-3"
+      }
+    });
+
+    const cv = await prisma.cv.create({
+      data: { tenantId: tenant.id, title: "Default CV" }
+    });
+
+    const cvVersion = await prisma.cvVersion.create({
+      data: { tenantId: tenant.id, cvId: cv.id, content: "CV content" }
+    });
+
+    await prisma.agentArtefact.create({
+      data: {
+        tenantId: tenant.id,
+        jobId: job.id,
+        cvVersionId: cvVersion.id,
+        promptVersion: "v1",
+        model: "gpt-5.2",
+        claimsUsed: [{ claim: "ETL pipelines" }],
+        status: "DRAFT",
+        content: "Pipeline summary"
+      }
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/jobs/${job.id}`)
+      .set("x-tenant-id", tenant.id)
+      .expect(200);
+
+    expect(response.body.id).toBe(job.id);
+    expect(response.body.artefacts).toHaveLength(1);
+    expect(response.body.artefacts[0].content).toBe("Pipeline summary");
+  });
 });
