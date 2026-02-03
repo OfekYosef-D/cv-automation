@@ -205,35 +205,37 @@ export function ApprovalConsole() {
           <StatusFilter value={statusFilter} onChange={handleStatusChange} />
         </div>
         {jobs.length === 0 ? (
-          <p className="text-slate-500 text-center py-4">No jobs found</p>
+          <p className="text-slate-500 text-center py-4">
+            {total > 0 ? "No jobs on this page" : "No jobs found"}
+          </p>
         ) : (
-          <>
-            <ul className="space-y-2">
-              {jobs.map((job) => (
-                <li key={job.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedJobId(job.id)}
-                    className={`w-full text-left p-3 rounded-md transition-colors ${
-                      selectedJobId === job.id
-                        ? "bg-slate-100 border-2 border-slate-300"
-                        : "hover:bg-slate-50 border-2 border-transparent"
-                    }`}
-                  >
-                    <div className="font-medium">{job.title}</div>
-                    <div className="text-sm text-slate-600">{job.location ?? "Unknown"}</div>
-                    <Badge className="mt-1">{getJobStatus(job)}</Badge>
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <Pagination
-              page={page}
-              pageSize={PAGE_SIZE}
-              total={total}
-              onPageChange={handlePageChange}
-            />
-          </>
+          <ul className="space-y-2">
+            {jobs.map((job) => (
+              <li key={job.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedJobId(job.id)}
+                  className={`w-full text-left p-3 rounded-md transition-colors ${
+                    selectedJobId === job.id
+                      ? "bg-slate-100 border-2 border-slate-300"
+                      : "hover:bg-slate-50 border-2 border-transparent"
+                  }`}
+                >
+                  <div className="font-medium">{job.title}</div>
+                  <div className="text-sm text-slate-600">{job.location ?? "Unknown"}</div>
+                  <Badge className="mt-1">{getJobStatus(job)}</Badge>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {total > 0 && (
+          <Pagination
+            page={page}
+            pageSize={PAGE_SIZE}
+            total={total}
+            onPageChange={handlePageChange}
+          />
         )}
       </Card>
 
