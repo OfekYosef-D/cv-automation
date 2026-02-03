@@ -17,6 +17,7 @@ export interface JobListResponseDto {
   jobs: JobListItemDto[];
   page: number;
   pageSize: number;
+  total: number;
 }
 
 export interface JobListQueryDto {

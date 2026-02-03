@@ -18,6 +18,9 @@ function validateEnv() {
 async function bootstrap() {
   validateEnv();
   const port = parseInt(process.env.PORT ?? "3001", 10);
+  if (Number.isNaN(port)) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT}`);
+  }
   const app = await NestFactory.create(AppModule);
 
   // Enable CORS for local development

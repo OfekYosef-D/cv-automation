@@ -6,7 +6,7 @@
 
 ## Copy-paste this to a new agent
 
-```
+```text
 I'm continuing work on the CV Automation project. Use these files as the handoff package:
 
 **Read first:**

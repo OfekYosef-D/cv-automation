@@ -12,6 +12,7 @@ export interface JobListResponse {
   }>;
   page: number;
   pageSize: number;
+  total: number;
 }
 
 export interface JobDetailResponse {

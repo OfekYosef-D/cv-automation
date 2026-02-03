@@ -100,7 +100,7 @@ async function main() {
   for (const job of jobs) {
     await prisma.job.upsert({
       where: { id: job.id },
-      update: job,
+      update: {},
       create: job
     });
     console.log("Created job:", job.title);
@@ -146,7 +146,7 @@ async function main() {
   for (const artefact of artefacts) {
     await prisma.agentArtefact.upsert({
       where: { id: artefact.id },
-      update: artefact,
+      update: {},
       create: artefact
     });
     console.log("Created artefact for job:", artefact.jobId);
