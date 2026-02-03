@@ -2,6 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { approveJob, rejectJob, snoozeJob } from "../lib/api";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Badge } from "./ui/badge";
 
 interface ApprovalConsoleProps {
   job: {
@@ -20,21 +23,19 @@ export function ApprovalConsole({ job, artefact }: ApprovalConsoleProps) {
   const actionsDisabled = isPending;
 
   return (
-    <section style={{ display: "flex", gap: "2rem" }}>
-      <div style={{ flex: 1 }}>
-        <h2>Jobs</h2>
-        <ul>
-          <li>
-            <strong>{job.title}</strong>
-            <div>{job.location ?? "Unknown"}</div>
-          </li>
-        </ul>
-      </div>
-      <div style={{ flex: 1 }}>
-        <h2>Artefacts</h2>
-        <p>{artefact?.content ?? "No artefact yet"}</p>
-        <div>
-          <button
+    <section className="flex gap-8">
+      <Card className="flex-1 p-6">
+        <h2 className="text-lg font-semibold">Jobs</h2>
+        <div className="mt-4">
+          <div className="font-medium">{job.title}</div>
+          <div className="text-sm text-slate-600">{job.location ?? "Unknown"}</div>
+        </div>
+      </Card>
+      <Card className="flex-1 p-6">
+        <h2 className="text-lg font-semibold">Artefacts</h2>
+        <p className="mt-4 text-slate-700">{artefact?.content ?? "No artefact yet"}</p>
+        <div className="mt-4 flex gap-3">
+          <Button
             type="button"
             disabled={actionsDisabled}
             onClick={() =>
@@ -50,9 +51,10 @@ export function ApprovalConsole({ job, artefact }: ApprovalConsoleProps) {
             }
           >
             Approve
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             disabled={actionsDisabled}
             onClick={() =>
               startTransition(async () => {
@@ -67,9 +69,10 @@ export function ApprovalConsole({ job, artefact }: ApprovalConsoleProps) {
             }
           >
             Reject
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
             disabled={actionsDisabled}
             onClick={() =>
               startTransition(async () => {
@@ -84,11 +87,11 @@ export function ApprovalConsole({ job, artefact }: ApprovalConsoleProps) {
             }
           >
             Snooze
-          </button>
-          {status ? <div>Current: {status}</div> : null}
-          {error ? <div role="alert">{error}</div> : null}
+          </Button>
         </div>
-      </div>
+        {status ? <Badge className="mt-3">Current: {status}</Badge> : null}
+        {error ? <p className="mt-2 text-sm text-red-600" role="alert">{error}</p> : null}
+      </Card>
     </section>
   );
 }
