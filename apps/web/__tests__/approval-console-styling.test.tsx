@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
 
 import { ApprovalConsole } from "../components/approval-console";
@@ -52,14 +52,28 @@ describe("Approval Console UI states", () => {
   });
 
   describe("loading state", () => {
-    it("displays loading message while fetching jobs", () => {
-      // Make getJobs never resolve to keep loading state
-      (api.getJobs as Mock).mockImplementationOnce(() => new Promise(() => {}));
+    it("displays loading message while fetching jobs", async () => {
+      // Create a deferred promise that we can resolve after assertions
+      let resolveDeferred: (value: unknown) => void;
+      const deferredPromise = new Promise((resolve) => {
+        resolveDeferred = resolve;
+      });
+      (api.getJobs as Mock).mockImplementationOnce(() => deferredPromise);
 
       render(<ApprovalConsole />);
 
       expect(screen.getByText("Loading jobs...")).toBeInTheDocument();
       expect(screen.getByText("Loading...")).toBeInTheDocument();
+
+      // Resolve the promise and flush state updates to clean up
+      await act(async () => {
+        resolveDeferred!({
+          jobs: [],
+          page: 1,
+          pageSize: 20,
+          total: 0
+        });
+      });
     });
 
     it("hides loading message after jobs are loaded", async () => {

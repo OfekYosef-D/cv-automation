@@ -4,12 +4,12 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-interface ErrorProps {
+interface GlobalErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
     // Log the error to an error reporting service
     console.error("Application error:", error);
