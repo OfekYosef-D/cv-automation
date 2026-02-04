@@ -24,15 +24,14 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 **Current status:**
 - Phase 1 COMPLETE: Issues #1-#6 (Approval Console data wiring) merged
 - Issue #9 COMPLETE: Job list with filtering and pagination UI
+- Skills audit COMPLETE: PR #15 - codebase now follows best practices
 - Phase 2 IN PROGRESS: Issues #8, #10-#13 are open
-- All tests passing: pnpm test, pnpm typecheck, pnpm lint
-- ⚠️ SKILLS WERE NOT USED last session - codebase needs review against best practices
+- All tests passing: pnpm test (29 web + 4 packages), pnpm typecheck, pnpm lint
 
 **Next steps:**
-1. **FIRST:** Review `.cursor/skills/` and audit codebase against relevant skills
-2. Fix any best practice violations (modular, readable, maintainable)
-3. Then pick an issue from #8, #10-#13 to implement
-4. Use TDD and announce which skills you're using
+1. Pick an issue from #8, #10-#13 to implement (recommended: #8 Matching API)
+2. Use TDD and announce which skills you're using
+3. Use `finishing-a-development-branch` skill before completing work
 
 **Run the app:** `pnpm dev` (API:3001, Web:3000). Ensure .env exists and Postgres is up (`pnpm docker:up`).
 ```
@@ -129,13 +128,15 @@ GitHub Actions (`.github/workflows/ci.yml`) runs:
 |---------|------|
 | API routes | `apps/api/src/**/*.controller.ts` |
 | API business logic | `apps/api/src/**/*.service.ts` |
+| API DTOs | `apps/api/src/**/*.dto.ts` |
 | Database schema | `packages/db/prisma/schema.prisma` |
 | Web pages | `apps/web/app/**/*.tsx` |
 | Web components | `apps/web/components/**/*.tsx` |
+| Shared types | `apps/web/lib/types.ts` |
 | Approval Console | `apps/web/components/approval-console.tsx` |
-| Pagination | `apps/web/components/pagination.tsx` |
-| Status Filter | `apps/web/components/status-filter.tsx` |
+| Error Boundary | `apps/web/app/error.tsx` |
 | API client | `apps/web/lib/api.ts` |
+| Class merge utility | `apps/web/lib/utils.ts` |
 | Next.js config | `apps/web/next.config.ts` |
 | ESLint config | `apps/web/eslint.config.mjs` |
 | Turbo config | `turbo.json` |
@@ -190,36 +191,38 @@ The web app was upgraded to latest stable versions:
 
 ---
 
-## IMPORTANT: Skills Were NOT Used Last Session
+## Skills Audit Complete (Feb 2026)
 
-⚠️ **The previous agent (Feb 2026) did NOT use the skills in `.cursor/skills/`.** The codebase may not follow all best practices.
+✅ **PR #15 completed the skills audit.** The codebase now follows best practices from `.cursor/skills/`.
 
-**Your first priority should be:**
-1. Review `.cursor/skills/` folder (100+ skills available)
-2. Read relevant SKILL.md files for this project
-3. Audit the codebase against these skills
-4. Fix any violations to ensure the base is **modular, readable, and maintainable**
+**What was fixed:**
+- Added comprehensive test coverage (29 web tests covering actions, errors, loading states)
+- Created validated DTOs with class-validator for API endpoints
+- Extracted shared types to `lib/types.ts` (no more duplication)
+- Standardized imports: `cn()` from `@/lib/utils` used consistently
+- Added `error.tsx` error boundary for App Router
+- Removed redundant code (unused JobsModule, duplicate tenant checks)
+- Updated Turborepo config (outputs, scripts)
 
-**Key skills to review against:**
-- `next-best-practices` - Check Next.js 16 patterns
-- `react-patterns` - Check React 19 patterns  
-- `nestjs-best-practices` - Check API patterns
-- `vitest` - Check test patterns
-- `tailwind-css-patterns` - Check styling
-- `shadcn-ui` - Check UI components
-- `turborepo` - Check monorepo structure
+**Key patterns established:**
+- Shared types in `apps/web/lib/types.ts`
+- API DTOs in `apps/api/src/*/*.dto.ts` with class-validator
+- UI components use `cn()` from `@/lib/utils`
+- Controllers trust TenantMiddleware (no redundant checks)
 
 ---
 
 ## Tips for Next Agent
 
-1. **USE SKILLS FIRST:** Check `.cursor/skills/` before any task - announce which skills you're using
+1. **USE SKILLS:** Check `.cursor/skills/` before any task - announce which skills you're using
 2. **Check CI first:** Run `gh run list` to see recent CI runs
 3. **Follow TDD:** Write failing test, implement, verify
 4. **Use turbo:** `pnpm --filter @cv/api test:e2e` to run specific package tests
 5. **Branch per issue:** `feat/issue-N-description`
 6. **Conventional commits:** `feat(api):`, `fix(web):`, `test:`, `chore:`
 7. **React 19:** Don't use `JSX.Element` return types - let TypeScript infer them
-8. **Race conditions:** When fetching data client-side, use request ID pattern (see `approval-console.tsx`)
-9. **URL state:** Use `useSearchParams` + `useRouter` for pagination/filtering (shareable links)
-10. **Completion:** Use `finishing-a-development-branch` skill before completing work
+8. **Shared types:** Import from `@/lib/types` not inline interfaces
+9. **API DTOs:** Use class-validator decorators, definite assignment (`!:`)
+10. **Race conditions:** Use request ID pattern (see `approval-console.tsx`)
+11. **URL state:** Use `useSearchParams` + `useRouter` for pagination/filtering
+12. **Completion:** Use `finishing-a-development-branch` skill before completing work

@@ -2,16 +2,15 @@
 
 Guidance for AI agents (Cursor, Claude, etc.) working on this codebase.
 
-## IMPORTANT: Use Skills First!
+## Use Skills!
 
 **Skills folder: `.cursor/skills/`** - Contains 100+ skills for best practices.
 
-⚠️ **WARNING:** The previous session (Feb 2026) did NOT use these skills. The codebase may not follow all best practices. **Your first task should be to review and fix the current state using the relevant skills.**
+✅ **Skills audit complete (PR #15).** The codebase follows best practices.
 
-**Before starting ANY work:**
-1. Run `Get-ChildItem -Path ".cursor/skills" -Force` to see available skills
-2. Read relevant skill SKILL.md files for your task
-3. Announce which skills you're using: "I'm using the X skill"
+**Before starting work:**
+1. Read relevant skill SKILL.md files for your task
+2. Announce which skills you're using: "I'm using the X skill"
 
 **Key skills for this project:**
 - `executing-plans` - For implementing multi-task plans
@@ -25,8 +24,6 @@ Guidance for AI agents (Cursor, Claude, etc.) working on this codebase.
 - `test-driven-development` - TDD approach
 - `turborepo` - Monorepo patterns
 - `tailwind-css-patterns` - Styling
-
-**Recommended first session task:** Review codebase against these skills and fix any violations to ensure the base is modular, readable, and maintainable.
 
 ---
 
@@ -60,6 +57,20 @@ Guidance for AI agents (Cursor, Claude, etc.) working on this codebase.
 4. **Commits**: Conventional commits preferred (`feat:`, `fix:`, `test:`).
 5. **Plan execution**: Use `executing-plans` skill for multi-task plans.
 6. **Completion**: Use `finishing-a-development-branch` skill before completing work.
+
+## Established Patterns
+
+**Web (apps/web):**
+- Shared types: `lib/types.ts` - import from `@/lib/types`
+- Class merging: use `cn()` from `@/lib/utils` (not raw clsx)
+- Error boundary: `app/error.tsx` handles uncaught errors
+- API client: `lib/api.ts` with typed responses
+- Race conditions: use request ID ref pattern (see `approval-console.tsx`)
+
+**API (apps/api):**
+- DTOs: use class-validator decorators with `!:` for properties
+- Controllers: trust TenantMiddleware, use `request.tenantId!`
+- Services: business logic only, inject dependencies via constructor
 
 ## Commands
 
