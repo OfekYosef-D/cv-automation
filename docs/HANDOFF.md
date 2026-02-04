@@ -26,11 +26,13 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - Issue #9 COMPLETE: Job list with filtering and pagination UI
 - Phase 2 IN PROGRESS: Issues #8, #10-#13 are open
 - All tests passing: pnpm test, pnpm typecheck, pnpm lint
+- ⚠️ SKILLS WERE NOT USED last session - codebase needs review against best practices
 
 **Next steps:**
-- Pick an issue from #8, #10-#13 to implement
-- Use TDD: write failing test first, then implement
-- Create feature branch, implement, PR, merge
+1. **FIRST:** Review `.cursor/skills/` and audit codebase against relevant skills
+2. Fix any best practice violations (modular, readable, maintainable)
+3. Then pick an issue from #8, #10-#13 to implement
+4. Use TDD and announce which skills you're using
 
 **Run the app:** `pnpm dev` (API:3001, Web:3000). Ensure .env exists and Postgres is up (`pnpm docker:up`).
 ```
@@ -188,14 +190,36 @@ The web app was upgraded to latest stable versions:
 
 ---
 
+## IMPORTANT: Skills Were NOT Used Last Session
+
+⚠️ **The previous agent (Feb 2026) did NOT use the skills in `.cursor/skills/`.** The codebase may not follow all best practices.
+
+**Your first priority should be:**
+1. Review `.cursor/skills/` folder (100+ skills available)
+2. Read relevant SKILL.md files for this project
+3. Audit the codebase against these skills
+4. Fix any violations to ensure the base is **modular, readable, and maintainable**
+
+**Key skills to review against:**
+- `next-best-practices` - Check Next.js 16 patterns
+- `react-patterns` - Check React 19 patterns  
+- `nestjs-best-practices` - Check API patterns
+- `vitest` - Check test patterns
+- `tailwind-css-patterns` - Check styling
+- `shadcn-ui` - Check UI components
+- `turborepo` - Check monorepo structure
+
+---
+
 ## Tips for Next Agent
 
-1. **Check CI first:** Run `gh run list` to see recent CI runs
-2. **Follow TDD:** Write failing test, implement, verify
-3. **Use turbo:** `pnpm --filter @cv/api test:e2e` to run specific package tests
-4. **Branch per issue:** `feat/issue-N-description`
-5. **Conventional commits:** `feat(api):`, `fix(web):`, `test:`, `chore:`
-6. **Skills available:** React patterns, NestJS, Tailwind, shadcn, Vitest, executing-plans
+1. **USE SKILLS FIRST:** Check `.cursor/skills/` before any task - announce which skills you're using
+2. **Check CI first:** Run `gh run list` to see recent CI runs
+3. **Follow TDD:** Write failing test, implement, verify
+4. **Use turbo:** `pnpm --filter @cv/api test:e2e` to run specific package tests
+5. **Branch per issue:** `feat/issue-N-description`
+6. **Conventional commits:** `feat(api):`, `fix(web):`, `test:`, `chore:`
 7. **React 19:** Don't use `JSX.Element` return types - let TypeScript infer them
 8. **Race conditions:** When fetching data client-side, use request ID pattern (see `approval-console.tsx`)
 9. **URL state:** Use `useSearchParams` + `useRouter` for pagination/filtering (shareable links)
+10. **Completion:** Use `finishing-a-development-branch` skill before completing work
