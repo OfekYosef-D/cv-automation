@@ -1,28 +1,9 @@
+import type { JobDetailResponse, JobListResponse } from "./types";
+
+export type { JobDetailResponse, JobListResponse };
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? "t1";
-
-export interface JobListResponse {
-  jobs: Array<{
-    id: string;
-    title: string;
-    location: string | null;
-    postedAt: string | null;
-    approvalStatus: "PENDING" | "APPROVED" | "REJECTED" | "SNOOZED";
-    latestArtefact: { id: string; status: "DRAFT" | "APPROVED" | "REJECTED"; content: string } | null;
-  }>;
-  page: number;
-  pageSize: number;
-  total: number;
-}
-
-export interface JobDetailResponse {
-  id: string;
-  title: string;
-  description: string;
-  location: string | null;
-  postedAt: string | null;
-  artefacts: Array<{ id: string; status: "DRAFT" | "APPROVED" | "REJECTED"; content: string }>;
-}
 
 async function apiFetch(path: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE_URL}${path}`, {

@@ -19,10 +19,11 @@ export class ArtefactsController {
 
   @Post()
   create(@Req() request: Request, @Body() body: CreateArtefactBody) {
-    const tenantId = request.tenantId;
+    // tenantId is guaranteed by TenantMiddleware
+    const tenantId = request.tenantId!;
 
     const input: CreateArtefactInput = {
-      tenantId: tenantId ?? "",
+      tenantId,
       jobId: body.jobId,
       cvVersionId: body.cvVersionId,
       promptVersion: body.promptVersion,

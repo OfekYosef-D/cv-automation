@@ -1,5 +1,6 @@
 "use client";
 
+import type { ApprovalStatusFilter } from "@/lib/types";
 import {
   Select,
   SelectContent,
@@ -8,14 +9,12 @@ import {
   SelectValue,
 } from "./ui/select";
 
-export type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | "SNOOZED" | "ALL";
-
 interface StatusFilterProps {
-  value: ApprovalStatus;
-  onChange: (status: ApprovalStatus) => void;
+  value: ApprovalStatusFilter;
+  onChange: (status: ApprovalStatusFilter) => void;
 }
 
-const STATUS_OPTIONS: { value: ApprovalStatus; label: string }[] = [
+const STATUS_OPTIONS: { value: ApprovalStatusFilter; label: string }[] = [
   { value: "ALL", label: "All" },
   { value: "PENDING", label: "Pending" },
   { value: "APPROVED", label: "Approved" },
@@ -25,7 +24,7 @@ const STATUS_OPTIONS: { value: ApprovalStatus; label: string }[] = [
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
   return (
-    <Select value={value} onValueChange={(v) => onChange(v as ApprovalStatus)}>
+    <Select value={value} onValueChange={(v) => onChange(v as ApprovalStatusFilter)}>
       <SelectTrigger className="w-40">
         <SelectValue placeholder="Filter by status" />
       </SelectTrigger>
