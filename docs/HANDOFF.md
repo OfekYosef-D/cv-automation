@@ -18,15 +18,17 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 **Context:**
 - Monorepo: NestJS API, Next.js web, worker, shared packages
 - Tech: TypeScript, Turborepo, pnpm, Prisma, Postgres
+- Web stack: Next.js 16.1.6, React 19, ESLint 9 (flat config), Tailwind CSS 4, Vitest 4
 - CI: GitHub Actions with PostgreSQL service container
 
 **Current status:**
-- Phase 1 COMPLETE: Issues #1-#6 (Approval Console data wiring) are closed and merged (PR #7)
-- Phase 2 IN PROGRESS: Issues #8-#13 are open for next development cycle
+- Phase 1 COMPLETE: Issues #1-#6 (Approval Console data wiring) merged
+- Issue #9 COMPLETE: Job list with filtering and pagination UI
+- Phase 2 IN PROGRESS: Issues #8, #10-#13 are open
 - All tests passing: pnpm test, pnpm typecheck, pnpm lint
 
 **Next steps:**
-- Pick an issue from #8-#13 to implement
+- Pick an issue from #8, #10-#13 to implement
 - Use TDD: write failing test first, then implement
 - Create feature branch, implement, PR, merge
 
@@ -37,7 +39,7 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 
 ## Project Status Summary
 
-### Completed (Phase 1)
+### Completed
 
 | Issue | Title | Status |
 |-------|-------|--------|
@@ -47,25 +49,24 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 | #4 | Web: wire approval console data | CLOSED |
 | #5 | Web: Tailwind + shadcn setup | CLOSED |
 | #6 | Web: optimistic UX tests | CLOSED |
+| #9 | Web: Add job list with filtering and pagination UI | CLOSED |
 
 ### Open (Phase 2)
 
 | Issue | Title | Priority |
 |-------|-------|----------|
 | #8 | API: Add matching endpoint to score jobs against CV | High |
-| #9 | Web: Add job list with filtering and pagination UI | High |
 | #10 | Web: Add match score display in job detail | Medium |
 | #11 | Worker: Add BullMQ job queue for ingestion | Medium |
 | #12 | API: Complete OAuth2 authentication (Google/GitHub) | Medium |
 | #13 | Infra: Add production deployment configuration | Low |
 
 ### Recommended Order
-1. **#9** (Job list UI) - Most visible improvement
-2. **#8** (Matching API) - Enables #10
-3. **#10** (Match score UI) - Better user experience
-4. **#11** (BullMQ) - Production-ready worker
-5. **#12** (OAuth) - Security requirement
-6. **#13** (Deployment) - Go live
+1. **#8** (Matching API) - Enables #10
+2. **#10** (Match score UI) - Better user experience
+3. **#11** (BullMQ) - Production-ready worker
+4. **#12** (OAuth) - Security requirement
+5. **#13** (Deployment) - Go live
 
 ---
 
@@ -83,9 +84,13 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - `GET /matching/:jobId` - Match score (basic implementation)
 
 ### Web (apps/web)
+- **Next.js 16.1.6** with React 19, ESLint 9 flat config, Tailwind CSS 4
 - Approval Console with job list and detail panels
+- **Pagination** with URL state (page param, shareable links, browser back/forward)
+- **Status filter** dropdown (All, Pending, Approved, Rejected, Snoozed)
 - Approve/Reject/Snooze actions with optimistic updates
-- Tailwind CSS + shadcn/ui components (Button, Card, Badge)
+- **Race condition guard** using request ID to prevent stale API responses
+- Tailwind CSS + shadcn/ui components (Button, Card, Badge, Select)
 - Typed API client in `lib/api.ts`
 
 ### Worker (apps/worker)
@@ -125,7 +130,12 @@ GitHub Actions (`.github/workflows/ci.yml`) runs:
 | Database schema | `packages/db/prisma/schema.prisma` |
 | Web pages | `apps/web/app/**/*.tsx` |
 | Web components | `apps/web/components/**/*.tsx` |
+| Approval Console | `apps/web/components/approval-console.tsx` |
+| Pagination | `apps/web/components/pagination.tsx` |
+| Status Filter | `apps/web/components/status-filter.tsx` |
 | API client | `apps/web/lib/api.ts` |
+| Next.js config | `apps/web/next.config.ts` |
+| ESLint config | `apps/web/eslint.config.mjs` |
 | Turbo config | `turbo.json` |
 | CI workflow | `.github/workflows/ci.yml` |
 
@@ -157,6 +167,27 @@ git checkout -b feat/issue-8-matching-api
 
 ---
 
+## Recent Upgrades (Feb 2026)
+
+The web app was upgraded to latest stable versions:
+
+| Package | Version |
+|---------|---------|
+| Next.js | 16.1.6 |
+| React | 19.2.4 |
+| ESLint | 9.39.2 (flat config) |
+| Vitest | 4.0.18 |
+| Tailwind CSS | 4.1.18 |
+| TypeScript | 5.9.3 |
+
+**Key changes:**
+- `next.config.ts` (TypeScript, not .js)
+- `eslint.config.mjs` (ESLint 9 flat config, not .eslintrc.cjs)
+- React 19: No more `JSX.Element` type annotations (inferred automatically)
+- `lint-staged` runs eslint via `pnpm --filter @cv/web exec eslint --fix`
+
+---
+
 ## Tips for Next Agent
 
 1. **Check CI first:** Run `gh run list` to see recent CI runs
@@ -165,3 +196,6 @@ git checkout -b feat/issue-8-matching-api
 4. **Branch per issue:** `feat/issue-N-description`
 5. **Conventional commits:** `feat(api):`, `fix(web):`, `test:`, `chore:`
 6. **Skills available:** React patterns, NestJS, Tailwind, shadcn, Vitest, executing-plans
+7. **React 19:** Don't use `JSX.Element` return types - let TypeScript infer them
+8. **Race conditions:** When fetching data client-side, use request ID pattern (see `approval-console.tsx`)
+9. **URL state:** Use `useSearchParams` + `useRouter` for pagination/filtering (shareable links)
