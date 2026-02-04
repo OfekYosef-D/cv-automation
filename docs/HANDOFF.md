@@ -25,11 +25,12 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - Phase 1 COMPLETE: Issues #1-#6 (Approval Console data wiring) merged
 - Issue #9 COMPLETE: Job list with filtering and pagination UI
 - Skills audit COMPLETE: PR #15 - codebase now follows best practices
-- Phase 2 IN PROGRESS: Issues #8, #10-#13 are open
+- Issue #8 COMPLETE: Matching API with UserProfile storage (PR #16 merged)
+- Phase 2 IN PROGRESS: Issues #10-#13 are open
 - All tests passing: pnpm test (29 web + 4 packages), pnpm typecheck, pnpm lint
 
 **Next steps:**
-1. Pick an issue from #8, #10-#13 to implement (recommended: #8 Matching API)
+1. Pick next issue: #10 (Match score UI) or #11 (BullMQ worker)
 2. Use TDD and announce which skills you're using
 3. Use `finishing-a-development-branch` skill before completing work
 
@@ -51,23 +52,22 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 | #5 | Web: Tailwind + shadcn setup | CLOSED |
 | #6 | Web: optimistic UX tests | CLOSED |
 | #9 | Web: Add job list with filtering and pagination UI | CLOSED |
+| #8 | API: Add matching endpoint to score jobs against CV | CLOSED |
 
 ### Open (Phase 2)
 
 | Issue | Title | Priority |
 |-------|-------|----------|
-| #8 | API: Add matching endpoint to score jobs against CV | High |
-| #10 | Web: Add match score display in job detail | Medium |
-| #11 | Worker: Add BullMQ job queue for ingestion | Medium |
+| #10 | Web: Add match score display in job detail | High |
+| #11 | Worker: Add BullMQ job queue for ingestion | High |
 | #12 | API: Complete OAuth2 authentication (Google/GitHub) | Medium |
 | #13 | Infra: Add production deployment configuration | Low |
 
 ### Recommended Order
-1. **#8** (Matching API) - Enables #10
-2. **#10** (Match score UI) - Better user experience
-3. **#11** (BullMQ) - Production-ready worker
-4. **#12** (OAuth) - Security requirement
-5. **#13** (Deployment) - Go live
+1. **#10** (Match score UI) - Uses new matching API from #8
+2. **#11** (BullMQ) - Enables automatic job ingestion
+3. **#12** (OAuth) - Security requirement
+4. **#13** (Deployment) - Go live
 
 ---
 
@@ -82,7 +82,10 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - `POST /artefacts` - Create agent artefact
 - `GET /health` - Health check
 - `GET /me` - Current user (requires auth)
-- `GET /matching/:jobId` - Match score (basic implementation)
+- `GET /profile` - Get tenant's matching profile
+- `PUT /profile` - Create/update matching profile (desiredRoles, seniority, location, mustHaveSkills)
+- `POST /matching/score` - Score a job against provided profile (stateless)
+- `GET /matching/jobs/:jobId` - Score a job against stored profile (requires profile)
 
 ### Web (apps/web)
 - **Next.js 16.1.6** with React 19, ESLint 9 flat config, Tailwind CSS 4
