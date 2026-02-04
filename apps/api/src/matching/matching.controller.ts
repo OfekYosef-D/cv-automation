@@ -1,4 +1,5 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
+import { Request } from "express";
 
 import { MatchJob, MatchProfile } from "@cv/matching";
 import { MatchingService } from "./matching.service";
@@ -27,5 +28,11 @@ export class MatchingController {
     };
 
     return this.matchingService.score(body.profile, job);
+  }
+
+  @Get("jobs/:jobId")
+  getJobMatch(@Req() request: Request, @Param("jobId") jobId: string) {
+    const tenantId = request.tenantId!;
+    return this.matchingService.getJobMatch(tenantId, jobId);
   }
 }

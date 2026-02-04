@@ -35,6 +35,7 @@ model Tenant {
   artefacts    AgentArtefact[]
   approvals    Approval[]
   consentLogs  ConsentLog[]
+  userProfile  UserProfile?
 }
 
 model User {
@@ -154,6 +155,19 @@ model ConsentLog {
   action    String
   metadata  Json
   createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model UserProfile {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique
+  desiredRoles   String[]
+  seniority      String
+  location       String
+  mustHaveSkills String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 }
