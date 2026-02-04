@@ -6,6 +6,7 @@ export class UpsertProfileDto {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   desiredRoles!: string[];
 
   @IsString()
@@ -20,6 +21,7 @@ export class UpsertProfileDto {
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
+  @IsNotEmpty({ each: true })
   mustHaveSkills!: string[];
 }
 
