@@ -204,11 +204,28 @@ The web app was upgraded to latest stable versions:
 - Removed redundant code (unused JobsModule, duplicate tenant checks)
 - Updated Turborepo config (outputs, scripts)
 
+**Skills cleanup:** Removed 69 irrelevant skills (Java/Spring, Vue, AWS CloudFormation). Now ~57 curated skills remain.
+
 **Key patterns established:**
 - Shared types in `apps/web/lib/types.ts`
 - API DTOs in `apps/api/src/*/*.dto.ts` with class-validator
 - UI components use `cn()` from `@/lib/utils`
 - Controllers trust TenantMiddleware (no redundant checks)
+
+---
+
+## Deployment Recommendation
+
+For Issue #13 (production deployment), the recommended stack is:
+
+| Component | Platform | Why |
+|-----------|----------|-----|
+| **Web (Next.js)** | Vercel | Built for Next.js, free tier, automatic deployments |
+| **API (NestJS)** | Railway or Render | Simple container deployment, ~$5/mo |
+| **Database** | Supabase or Railway | Free PostgreSQL tier, managed backups |
+| **Worker** | Railway or Render | Same platform as API |
+
+Skills available: `vercel-react-best-practices`, `supabase-postgres-best-practices`
 
 ---
 

@@ -4,9 +4,10 @@ Guidance for AI agents (Cursor, Claude, etc.) working on this codebase.
 
 ## Use Skills!
 
-**Skills folder: `.cursor/skills/`** - Contains 100+ skills for best practices.
+**Skills folder: `.cursor/skills/`** - Contains ~57 curated skills relevant to this project.
 
 ✅ **Skills audit complete (PR #15).** The codebase follows best practices.
+✅ **Skills cleanup complete.** Removed 69 irrelevant skills (Java/Spring, Vue, AWS CloudFormation).
 
 **Before starting work:**
 1. Read relevant skill SKILL.md files for your task
