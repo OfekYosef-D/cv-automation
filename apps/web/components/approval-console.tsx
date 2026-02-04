@@ -2,26 +2,19 @@
 
 import { useState, useTransition, useEffect, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { approveJob, rejectJob, snoozeJob, getJobs, type JobListResponse } from "../lib/api";
+import { approveJob, rejectJob, snoozeJob, getJobs } from "@/lib/api";
+import type { ApprovalStatusFilter, Job, JobListResponse } from "@/lib/types";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Pagination } from "./pagination";
-import { StatusFilter, type ApprovalStatus } from "./status-filter";
-
-interface Job {
-  id: string;
-  title: string;
-  location: string | null;
-  approvalStatus: string;
-  latestArtefact: { id: string; status: string; content: string } | null;
-}
+import { StatusFilter } from "./status-filter";
 
 const PAGE_SIZE = 20;
-const VALID_STATUSES: ApprovalStatus[] = ["ALL", "PENDING", "APPROVED", "REJECTED", "SNOOZED"];
+const VALID_STATUSES: ApprovalStatusFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED", "SNOOZED"];
 
-function isValidApprovalStatus(value: string | null): value is ApprovalStatus {
-  return value !== null && VALID_STATUSES.includes(value as ApprovalStatus);
+function isValidApprovalStatus(value: string | null): value is ApprovalStatusFilter {
+  return value !== null && VALID_STATUSES.includes(value as ApprovalStatusFilter);
 }
 
 export function ApprovalConsole() {
@@ -32,7 +25,7 @@ export function ApprovalConsole() {
   const parsedPage = parseInt(searchParams.get("page") ?? "", 10);
   const page = Number.isNaN(parsedPage) ? 1 : Math.max(1, parsedPage);
   const statusParam = searchParams.get("status");
-  const statusFilter: ApprovalStatus = isValidApprovalStatus(statusParam) ? statusParam : "ALL";
+  const statusFilter: ApprovalStatusFilter = isValidApprovalStatus(statusParam) ? statusParam : "ALL";
 
   // State
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -128,7 +121,7 @@ export function ApprovalConsole() {
     updateParams({ page: newPage });
   };
 
-  const handleStatusChange = (newStatus: ApprovalStatus): void => {
+  const handleStatusChange = (newStatus: ApprovalStatusFilter): void => {
     // Reset to page 1 when changing filter
     updateParams({ status: newStatus, page: 1 });
   };

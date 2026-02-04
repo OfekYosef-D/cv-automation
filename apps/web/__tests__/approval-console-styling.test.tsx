@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
 
 import { ApprovalConsole } from "../components/approval-console";
+import * as api from "../lib/api";
 
 // Mock next/navigation
 const mockPush = vi.fn();
@@ -32,20 +33,130 @@ vi.mock("../lib/api", () => ({
   snoozeJob: vi.fn(async () => ({}))
 }));
 
-describe("Approval Console styling", () => {
+describe("Approval Console UI states", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders action buttons with Tailwind classes", async () => {
-    render(<ApprovalConsole />);
+  describe("styling", () => {
+    it("renders action buttons with Tailwind classes", async () => {
+      render(<ApprovalConsole />);
 
-    // Wait for jobs to load
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Approve" })).toBeInTheDocument();
+      });
+
+      const approveButton = screen.getByRole("button", { name: "Approve" });
+      expect(approveButton.className).toContain("inline-flex");
+    });
+  });
+
+  describe("loading state", () => {
+    it("displays loading message while fetching jobs", () => {
+      // Make getJobs never resolve to keep loading state
+      (api.getJobs as Mock).mockImplementationOnce(() => new Promise(() => {}));
+
+      render(<ApprovalConsole />);
+
+      expect(screen.getByText("Loading jobs...")).toBeInTheDocument();
+      expect(screen.getByText("Loading...")).toBeInTheDocument();
     });
 
-    const approveButton = screen.getByRole("button", { name: "Approve" });
-    expect(approveButton.className).toContain("inline-flex");
+    it("hides loading message after jobs are loaded", async () => {
+      render(<ApprovalConsole />);
+
+      await waitFor(() => {
+        expect(screen.queryByText("Loading jobs...")).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("error state", () => {
+    it("displays error message when job fetch fails", async () => {
+      (api.getJobs as Mock).mockRejectedValueOnce(new Error("Network error"));
+
+      render(<ApprovalConsole />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Failed to load jobs")).toBeInTheDocument();
+      });
+    });
+
+    it("displays retry button when job fetch fails", async () => {
+      (api.getJobs as Mock).mockRejectedValueOnce(new Error("Network error"));
+
+      render(<ApprovalConsole />);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+      });
+    });
+
+    it("retries fetching jobs when retry button is clicked", async () => {
+      (api.getJobs as Mock)
+        .mockRejectedValueOnce(new Error("Network error"))
+        .mockResolvedValueOnce({
+          jobs: [
+            {
+              id: "job-1",
+              title: "Fullstack Developer",
+              location: "Remote",
+              approvalStatus: "PENDING",
+              latestArtefact: null
+            }
+          ],
+          page: 1,
+          pageSize: 20,
+          total: 1
+        });
+
+      render(<ApprovalConsole />);
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+      // Job title appears in both list and detail panel
+      await waitFor(() => {
+        const jobTitles = screen.getAllByText("Fullstack Developer");
+        expect(jobTitles.length).toBeGreaterThanOrEqual(1);
+      });
+
+      expect(api.getJobs).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("empty state", () => {
+    it("displays empty message when no jobs found", async () => {
+      (api.getJobs as Mock).mockResolvedValueOnce({
+        jobs: [],
+        page: 1,
+        pageSize: 20,
+        total: 0
+      });
+
+      render(<ApprovalConsole />);
+
+      await waitFor(() => {
+        expect(screen.getByText("No jobs found")).toBeInTheDocument();
+      });
+    });
+
+    it("displays 'Select a job' message when no job is selected", async () => {
+      (api.getJobs as Mock).mockResolvedValueOnce({
+        jobs: [],
+        page: 1,
+        pageSize: 20,
+        total: 0
+      });
+
+      render(<ApprovalConsole />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Select a job to view details")).toBeInTheDocument();
+      });
+    });
   });
 });
