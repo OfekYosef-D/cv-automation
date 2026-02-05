@@ -58,11 +58,17 @@ export class AuthController {
       const token = authResponse.accessToken;
       const isProd = process.env.NODE_ENV === "production";
 
-      // Set token in HttpOnly cookie (not in URL)
+      const rawSameSite = process.env.COOKIE_SAME_SITE?.toLowerCase() ?? "lax";
+      const sameSite =
+        rawSameSite === "none" || rawSameSite === "strict"
+          ? rawSameSite
+          : "lax";
+      const secure = sameSite === "none" ? true : isProd;
+
       res.cookie("access_token", token, {
         httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? "lax" : "lax",
+        secure,
+        sameSite: sameSite as "lax" | "strict" | "none",
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: "/"
       });

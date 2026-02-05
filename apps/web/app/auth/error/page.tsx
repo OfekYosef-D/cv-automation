@@ -8,7 +8,7 @@ export default function AuthErrorPage() {
   const error = searchParams.get("error");
 
   const errorMessage = error
-    ? decodeURIComponent(error)
+    ? error
     : "An unknown error occurred during authentication";
 
   return (

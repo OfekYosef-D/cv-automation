@@ -132,8 +132,7 @@ export class RemoteOKAdapter implements JobSourceAdapter {
     if (!min && !max) return undefined;
     if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
     if (min) return `$${min.toLocaleString()}+`;
-    if (max) return `Up to $${max.toLocaleString()}`;
-    return undefined;
+    return max ? `Up to $${max.toLocaleString()}` : undefined;
   }
 
   private stripHtml(html: string): string {

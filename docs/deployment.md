@@ -156,6 +156,7 @@ Recommended platforms by service:
 |----------|---------|-------------|
 | `PORT` | 3001 | API port |
 | `NEXT_PUBLIC_TENANT_ID` | t1 | Default tenant ID |
+| `COOKIE_SAME_SITE` | lax | `lax`, `strict`, or `none`. Use `none` for cross-origin (API and frontend on different domains); requires HTTPS. |
 
 ## Setting Up WorkOS AuthKit
 

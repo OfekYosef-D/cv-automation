@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 
@@ -10,12 +10,12 @@ function getStateFromParams(searchParams: ReturnType<typeof useSearchParams>):
   const errorParam = searchParams.get("error");
 
   if (errorParam) {
-    return { status: "error", error: decodeURIComponent(errorParam) };
+    return { status: "error", error: errorParam };
   }
   return { status: "success" };
 }
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refreshUser } = useAuth();
@@ -94,5 +94,24 @@ export default function AuthCallbackPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function AuthCallbackFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+        <p className="mt-4 text-slate-600">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<AuthCallbackFallback />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }
