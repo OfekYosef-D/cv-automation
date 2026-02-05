@@ -7,14 +7,10 @@ import { useAuth } from "@/lib/auth";
 function getStateFromParams(searchParams: ReturnType<typeof useSearchParams>):
   | { status: "success" }
   | { status: "error"; error: string } {
-  const token = searchParams.get("token");
   const errorParam = searchParams.get("error");
 
   if (errorParam) {
     return { status: "error", error: decodeURIComponent(errorParam) };
-  }
-  if (!token) {
-    return { status: "error", error: "No token received from authentication" };
   }
   return { status: "success" };
 }
@@ -22,7 +18,7 @@ function getStateFromParams(searchParams: ReturnType<typeof useSearchParams>):
 export default function AuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setToken } = useAuth();
+  const { refreshUser } = useAuth();
   const state = getStateFromParams(searchParams);
   const redirectScheduled = useRef(false);
 
@@ -30,15 +26,15 @@ export default function AuthCallbackPage() {
     if (state.status !== "success" || redirectScheduled.current) return;
     redirectScheduled.current = true;
 
-    const token = searchParams.get("token");
-    if (token) setToken(token);
+    // Refresh user from cookie (just set by API redirect)
+    refreshUser();
 
     const timeout = setTimeout(() => {
       router.push("/");
     }, 1500);
 
     return () => clearTimeout(timeout);
-  }, [state.status, searchParams, setToken, router]);
+  }, [state.status, router, refreshUser]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">

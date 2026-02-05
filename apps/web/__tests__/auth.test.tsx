@@ -58,8 +58,7 @@ describe("AuthProvider", () => {
     });
   });
 
-  it("loads token from localStorage on mount", async () => {
-    localStorageMock.getItem.mockReturnValue("test-token");
+  it("loads user when /auth/me returns success (cookie auth)", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -92,8 +91,7 @@ describe("AuthProvider", () => {
     });
   });
 
-  it("clears token when API returns error", async () => {
-    localStorageMock.getItem.mockReturnValue("invalid-token");
+  it("shows unauthenticated when /auth/me returns error", async () => {
     mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
 
     function TestComponent() {
@@ -111,7 +109,6 @@ describe("AuthProvider", () => {
     await waitFor(() => {
       expect(screen.getByText("Not authenticated")).toBeInTheDocument();
     });
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith("cv_auth_token");
   });
 });
 
@@ -150,7 +147,6 @@ describe("UserMenu", () => {
   });
 
   it("shows user info and Sign out when authenticated", async () => {
-    localStorageMock.getItem.mockReturnValue("test-token");
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -175,17 +171,18 @@ describe("UserMenu", () => {
   });
 
   it("clears auth on Sign out click", async () => {
-    localStorageMock.getItem.mockReturnValue("test-token");
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        id: "user-1",
-        email: "test@example.com",
-        name: "Test User",
-        avatarUrl: null,
-        tenantId: "t1"
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          id: "user-1",
+          email: "test@example.com",
+          name: "Test User",
+          avatarUrl: null,
+          tenantId: "t1"
+        })
       })
-    });
+      .mockResolvedValueOnce({ ok: true }); // logout API call
 
     render(
       <AuthProvider>
@@ -199,7 +196,6 @@ describe("UserMenu", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
 
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith("cv_auth_token");
     await waitFor(() => {
       expect(screen.getByRole("button", { name: "Sign in" })).toBeInTheDocument();
     });

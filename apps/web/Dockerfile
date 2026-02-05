@@ -44,6 +44,7 @@ RUN pnpm --filter @cv/web build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner
+RUN apk add --no-cache wget
 
 WORKDIR /app
 

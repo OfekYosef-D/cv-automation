@@ -14,15 +14,12 @@ export class WorkOSAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
+    const cookieToken = request.cookies?.access_token;
 
-    if (!authHeader) {
-      throw new UnauthorizedException("Missing authorization header");
-    }
-
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader?.replace("Bearer ", "") ?? cookieToken;
 
     if (!token) {
-      throw new UnauthorizedException("Missing bearer token");
+      throw new UnauthorizedException("Missing authorization token or cookie");
     }
 
     try {

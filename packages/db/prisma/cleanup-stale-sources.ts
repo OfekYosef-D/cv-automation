@@ -53,57 +53,48 @@ async function main() {
     console.log(`  ... and ${staleSources.length - 10} more`);
   }
 
-  // First, delete jobs linked to stale sources
   const staleSourceIds = staleSources.map((s) => s.id);
-  
-  // Delete approvals for jobs from stale sources
-  const deletedApprovals = await prisma.approval.deleteMany({
-    where: {
-      job: {
-        jobSourceId: { in: staleSourceIds }
-      }
-    }
-  });
+
+  const [deletedApprovals, deletedArtefacts, deletedMatches, deletedJobs, deletedSources] =
+    await prisma.$transaction([
+      prisma.approval.deleteMany({
+        where: {
+          job: {
+            jobSourceId: { in: staleSourceIds }
+          }
+        }
+      }),
+      prisma.agentArtefact.deleteMany({
+        where: {
+          job: {
+            jobSourceId: { in: staleSourceIds }
+          }
+        }
+      }),
+      prisma.jobMatch.deleteMany({
+        where: {
+          job: {
+            jobSourceId: { in: staleSourceIds }
+          }
+        }
+      }),
+      prisma.job.deleteMany({
+        where: {
+          jobSourceId: { in: staleSourceIds }
+        }
+      }),
+      prisma.jobSource.deleteMany({
+        where: {
+          id: { in: staleSourceIds }
+        }
+      })
+    ]);
+
   console.log(`\nDeleted ${deletedApprovals.count} approvals from stale sources`);
-
-  // Delete artefacts for jobs from stale sources
-  const deletedArtefacts = await prisma.agentArtefact.deleteMany({
-    where: {
-      job: {
-        jobSourceId: { in: staleSourceIds }
-      }
-    }
-  });
   console.log(`Deleted ${deletedArtefacts.count} artefacts from stale sources`);
-
-  // Delete job matches for jobs from stale sources
-  const deletedMatches = await prisma.jobMatch.deleteMany({
-    where: {
-      job: {
-        jobSourceId: { in: staleSourceIds }
-      }
-    }
-  });
   console.log(`Deleted ${deletedMatches.count} job matches from stale sources`);
-
-  // Delete jobs from stale sources
-  const deletedJobs = await prisma.job.deleteMany({
-    where: {
-      jobSourceId: { in: staleSourceIds }
-    }
-  });
   console.log(`Deleted ${deletedJobs.count} jobs from stale sources`);
-
-  // Delete stale sources
-  const result = await prisma.jobSource.deleteMany({
-    where: {
-      id: {
-        notIn: VALID_SOURCE_IDS
-      }
-    }
-  });
-
-  console.log(`\n✅ Deleted ${result.count} stale job sources.`);
+  console.log(`\n✅ Deleted ${deletedSources.count} stale job sources.`);
 
   // Verify remaining sources
   const remaining = await prisma.jobSource.findMany({

@@ -45,6 +45,7 @@ RUN pnpm --filter @cv/api build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner
+RUN apk add --no-cache wget
 RUN npm install -g pnpm@9
 
 WORKDIR /app
@@ -70,6 +71,9 @@ RUN pnpm install --frozen-lockfile --prod
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/packages/matching/dist ./packages/matching/dist
 COPY --from=builder /app/packages/db/prisma ./packages/db/prisma
+
+# Copy generated Prisma client from builder (avoids postinstall prisma generate)
+# pnpm stores it in .pnpm/@prisma+client@.../node_modules/.prisma
 COPY --from=builder /app/node_modules/.pnpm/@prisma+client* ./node_modules/.pnpm/
 
 # Copy Prisma schema for migrations

@@ -1,3 +1,4 @@
+import type { Worker } from "bullmq";
 import { prisma } from "@cv/db";
 import {
   createIngestionQueue,
@@ -5,6 +6,8 @@ import {
   processIngestionJob,
   type IngestionJobData
 } from "./queue";
+
+let worker: Worker | undefined;
 
 /**
  * Graceful shutdown handling.
@@ -17,7 +20,15 @@ async function shutdown(signal: string): Promise<void> {
 
   console.log(`\n[Worker] Received ${signal}, shutting down gracefully...`);
 
-  // Close database connection
+  try {
+    if (worker) {
+      await worker.close();
+      console.log("[Worker] BullMQ worker closed");
+    }
+  } catch (err) {
+    console.error("[Worker] Error closing worker:", err);
+  }
+
   await prisma.$disconnect();
   console.log("[Worker] Database connection closed");
 
@@ -99,7 +110,7 @@ async function main(): Promise<void> {
   await scheduleRepeatableJobs();
 
   // Create and start the worker
-  const worker = createIngestionWorker(processIngestionJob);
+  worker = createIngestionWorker(processIngestionJob);
 
   worker.on("completed", (job, result) => {
     console.log(

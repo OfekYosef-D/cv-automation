@@ -81,12 +81,21 @@ export class RemotiveAdapter implements JobSourceAdapter {
         url += `limit=${config.limit}`;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "CV-Automation-Worker/1.0"
-        }
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "CV-Automation-Worker/1.0"
+          },
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -105,12 +114,15 @@ export class RemotiveAdapter implements JobSourceAdapter {
       // Remotive's candidate_required_location field contains location restrictions
       if (config.location) {
         const locationLower = config.location.toLowerCase();
+        const REMOTE_TOKENS = [
+          "remote",
+          "anywhere",
+          "worldwide",
+          "global",
+          "telecommute"
+        ];
         normalizedJobs = normalizedJobs.filter((job) => {
           const jobLocation = job.location?.toLowerCase() || "";
-          // Include if:
-          // - Job location contains the target location
-          // - Job is worldwide/anywhere
-          // - Target is remote and job allows remote
           return (
             jobLocation.includes(locationLower) ||
             jobLocation.includes("worldwide") ||
@@ -120,7 +132,8 @@ export class RemotiveAdapter implements JobSourceAdapter {
               (jobLocation.includes("emea") ||
                 jobLocation.includes("europe") ||
                 jobLocation.includes("middle east"))) ||
-            (locationLower === "remote" && job.location?.toLowerCase() !== "")
+            (locationLower === "remote" &&
+              REMOTE_TOKENS.some((t) => jobLocation.includes(t)))
           );
         });
       }
@@ -131,11 +144,14 @@ export class RemotiveAdapter implements JobSourceAdapter {
         errors: errors.length > 0 ? errors : undefined
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const isTimeout =
+        error instanceof Error && error.name === "AbortError";
+      const errorMessage = isTimeout
+        ? "Remotive request timed out"
+        : `Failed to fetch from Remotive: ${error instanceof Error ? error.message : "Unknown error"}`;
       return {
         jobs: [],
-        errors: [`Failed to fetch from Remotive: ${errorMessage}`]
+        errors: [errorMessage]
       };
     }
   }

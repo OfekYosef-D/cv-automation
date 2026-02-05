@@ -1,3 +1,4 @@
+import cookieParser from "cookie-parser";
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -13,6 +14,7 @@ describe("Auth and tenant (e2e)", () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    app.use(cookieParser());
     await app.init();
   });
 
@@ -90,7 +92,7 @@ describe("Auth and tenant (e2e)", () => {
     it("POST /auth/logout returns success message", async () => {
       await request(app.getHttpServer())
         .post("/auth/logout")
-        .expect(201)
+        .expect(200)
         .expect({ message: "Logged out successfully" });
     });
   });

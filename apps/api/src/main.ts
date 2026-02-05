@@ -4,6 +4,7 @@ import { resolve } from "path";
 // Load .env from monorepo root
 config({ path: resolve(__dirname, "../../../.env") });
 
+import cookieParser from "cookie-parser";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
@@ -25,6 +26,8 @@ async function bootstrap() {
     throw new Error(`Invalid PORT value: ${process.env.PORT}`);
   }
   const app = await NestFactory.create(AppModule);
+
+  app.use(cookieParser());
 
   // Enable global validation with transformation
   app.useGlobalPipes(new ValidationPipe({ transform: true }));

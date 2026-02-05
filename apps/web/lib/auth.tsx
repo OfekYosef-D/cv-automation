@@ -9,7 +9,6 @@ import {
   type ReactNode
 } from "react";
 
-const TOKEN_KEY = "cv_auth_token";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
 export interface User {
@@ -22,90 +21,66 @@ export interface User {
 
 interface AuthContextValue {
   user: User | null;
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: () => void;
   logout: () => void;
-  setToken: (token: string) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load token from localStorage on mount
-  useEffect(() => {
-    const storedToken = localStorage.getItem(TOKEN_KEY);
-    if (storedToken) {
-      setTokenState(storedToken);
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchUser = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, {
+        credentials: "include"
+      });
 
-  // Fetch user when token changes
-  useEffect(() => {
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
-    const fetchUser = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (res.ok) {
-          const userData = await res.json();
-          setUser(userData);
-        } else {
-          // Token invalid, clear it
-          localStorage.removeItem(TOKEN_KEY);
-          setTokenState(null);
-          setUser(null);
-        }
-      } catch {
-        // Network error, keep token but clear user
+      if (res.ok) {
+        const userData = await res.json();
+        setUser(userData);
+      } else {
         setUser(null);
-      } finally {
-        setIsLoading(false);
       }
-    };
-
-    fetchUser();
-  }, [token]);
-
-  const setToken = useCallback((newToken: string) => {
-    localStorage.setItem(TOKEN_KEY, newToken);
-    setTokenState(newToken);
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
 
   const login = useCallback(() => {
     window.location.href = `${API_BASE}/auth/login`;
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    setTokenState(null);
-    setUser(null);
+  const logout = useCallback(async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        credentials: "include"
+      });
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
         isAuthenticated: !!user,
         login,
         logout,
-        setToken
+        refreshUser: fetchUser
       }}
     >
       {children}

@@ -47,13 +47,21 @@ export class RemoteOKAdapter implements JobSourceAdapter {
     const errors: string[] = [];
 
     try {
-      const response = await fetch(this.apiUrl, {
-        headers: {
-          Accept: "application/json",
-          // RemoteOK requires a User-Agent header
-          "User-Agent": "CV-Automation-Worker/1.0 (job-search-aggregator)"
-        }
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      let response: Response;
+      try {
+        response = await fetch(this.apiUrl, {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "CV-Automation-Worker/1.0 (job-search-aggregator)"
+          },
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -94,11 +102,14 @@ export class RemoteOKAdapter implements JobSourceAdapter {
         errors: errors.length > 0 ? errors : undefined
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
+      const isTimeout =
+        error instanceof Error && error.name === "AbortError";
+      const errorMessage = isTimeout
+        ? "RemoteOK request timed out"
+        : `Failed to fetch from RemoteOK: ${error instanceof Error ? error.message : "Unknown error"}`;
       return {
         jobs: [],
-        errors: [`Failed to fetch from RemoteOK: ${errorMessage}`]
+        errors: [errorMessage]
       };
     }
   }

@@ -104,14 +104,23 @@ export class GreenhouseAdapter implements JobSourceAdapter {
     const errors: string[] = [];
 
     try {
-      // Fetch job list
+      // Fetch job list with timeout
       const jobsUrl = `${this.baseApiUrl}/${boardToken}/jobs?content=true`;
-      const response = await fetch(jobsUrl, {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "CV-Automation-Worker/1.0"
-        }
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      let response: Response;
+      try {
+        response = await fetch(jobsUrl, {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "CV-Automation-Worker/1.0"
+          },
+          signal: controller.signal
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -134,11 +143,17 @@ export class GreenhouseAdapter implements JobSourceAdapter {
       let filteredJobs = jobs;
       if (config.location) {
         const locationLower = config.location.toLowerCase();
-        filteredJobs = jobs.filter(
-          (job) =>
-            job.location?.toLowerCase().includes(locationLower) ||
-            locationLower === "remote"
-        );
+        filteredJobs = jobs.filter((job) => {
+          const jobLoc = job.location?.toLowerCase() ?? "";
+          return (
+            jobLoc.includes(locationLower) ||
+            (locationLower === "remote" &&
+              (jobLoc.includes("remote") ||
+                jobLoc.includes("anywhere") ||
+                jobLoc.includes("worldwide") ||
+                jobLoc.includes("telecommute")))
+          );
+        });
       }
 
       return {
@@ -149,9 +164,15 @@ export class GreenhouseAdapter implements JobSourceAdapter {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
+      const isTimeout =
+        error instanceof Error && error.name === "AbortError";
       return {
         jobs: [],
-        errors: [`Failed to fetch from Greenhouse: ${errorMessage}`]
+        errors: [
+          isTimeout
+            ? "Greenhouse request timed out"
+            : `Failed to fetch from Greenhouse: ${errorMessage}`
+        ]
       };
     }
   }

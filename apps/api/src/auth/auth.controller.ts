@@ -55,9 +55,19 @@ export class AuthController {
       // Sync user to our database
       await this.authService.syncUser(authResponse.user);
 
-      // Redirect to frontend with access token
       const token = authResponse.accessToken;
-      res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
+      const isProd = process.env.NODE_ENV === "production";
+
+      // Set token in HttpOnly cookie (not in URL)
+      res.cookie("access_token", token, {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "lax" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: "/"
+      });
+
+      res.redirect(`${frontendUrl}/auth/callback`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Authentication failed";
       res.redirect(`${frontendUrl}/auth/error?error=${encodeURIComponent(message)}`);
@@ -94,13 +104,11 @@ export class AuthController {
 
   /**
    * Logout endpoint.
-   * For JWT-based auth, the client discards the token.
-   * This endpoint exists for explicit logout actions and future session invalidation.
+   * Clears the HttpOnly cookie.
    */
   @Post("logout")
-  logout() {
-    // JWT tokens are stateless - client should discard the token
-    // In the future, we could add token blacklisting here
-    return { message: "Logged out successfully" };
+  logout(@Res() res: Response) {
+    res.clearCookie("access_token", { path: "/" });
+    return res.json({ message: "Logged out successfully" });
   }
 }

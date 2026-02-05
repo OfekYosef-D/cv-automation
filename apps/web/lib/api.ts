@@ -8,6 +8,7 @@ const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? "t1";
 async function apiFetch(path: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
+    credentials: "include",
     headers: {
       "content-type": "application/json",
       "x-tenant-id": TENANT_ID,
