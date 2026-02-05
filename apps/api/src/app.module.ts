@@ -1,7 +1,7 @@
-import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 
 import { HealthController } from "./health.controller";
-import { AuthGuard } from "./auth/auth.guard";
+import { AuthModule } from "./auth/auth.module";
 import { MeController } from "./me.controller";
 import { TenantMiddleware } from "./tenant/tenant.middleware";
 import { ArtefactsController } from "./artefacts/artefacts.controller";
@@ -16,6 +16,7 @@ import { ProfileController } from "./profile/profile.controller";
 import { ProfileService } from "./profile/profile.service";
 
 @Module({
+  imports: [AuthModule],
   controllers: [
     HealthController,
     MeController,
@@ -25,10 +26,17 @@ import { ProfileService } from "./profile/profile.service";
     JobsController,
     ProfileController
   ],
-  providers: [AuthGuard, ArtefactsService, MatchingService, ApprovalsService, JobsService, ProfileService]
+  providers: [ArtefactsService, MatchingService, ApprovalsService, JobsService, ProfileService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TenantMiddleware).forRoutes("*");
+    // Exclude auth routes from tenant middleware (they handle their own auth)
+    consumer
+      .apply(TenantMiddleware)
+      .exclude(
+        { path: "auth/(.*)", method: RequestMethod.ALL },
+        { path: "health", method: RequestMethod.GET }
+      )
+      .forRoutes("*");
   }
 }

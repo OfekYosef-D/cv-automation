@@ -38,13 +38,21 @@ model Tenant {
   userProfile  UserProfile?
 }
 
+enum AuthProvider {
+  LOCAL
+  WORKOS
+}
+
 model User {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   tenantId  String
-  email     String   @unique
+  email     String       @unique
   name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  avatarUrl String?
+  provider  AuthProvider @default(LOCAL)
+  workosId  String?      @unique
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 }

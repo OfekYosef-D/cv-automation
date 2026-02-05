@@ -1,6 +1,6 @@
-import type { JobDetailResponse, JobListResponse } from "./types";
+import type { JobDetailResponse, JobListResponse, MatchScoreResponse } from "./types";
 
-export type { JobDetailResponse, JobListResponse };
+export type { JobDetailResponse, JobListResponse, MatchScoreResponse };
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? "t1";
@@ -42,3 +42,6 @@ export const rejectJob = (jobId: string) =>
 
 export const snoozeJob = (jobId: string) =>
   apiFetch("/approvals/snooze", { method: "POST", body: JSON.stringify({ jobId }) });
+
+export const getMatchScore = (jobId: string): Promise<MatchScoreResponse> =>
+  apiFetch(`/matching/jobs/${jobId}`);

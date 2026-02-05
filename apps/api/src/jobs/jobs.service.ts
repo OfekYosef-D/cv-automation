@@ -89,6 +89,7 @@ export class JobsService {
       title: job.title,
       description: job.description,
       location: job.location,
+      url: job.url,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       artefacts: (job.artefacts as unknown as JobArtefact[]).map((artefact: JobArtefact) => ({
         id: artefact.id,

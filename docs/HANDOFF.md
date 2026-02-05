@@ -26,13 +26,19 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - Issue #9 COMPLETE: Job list with filtering and pagination UI
 - Skills audit COMPLETE: PR #15 - codebase now follows best practices
 - Issue #8 COMPLETE: Matching API with UserProfile storage (PR #16 merged)
-- Phase 2 IN PROGRESS: Issues #10-#13 are open
-- All tests passing: pnpm test (29 web + 4 packages), pnpm typecheck, pnpm lint
+- Issue #10 COMPLETE: Match score display in job detail panel
+- Issue #11 COMPLETE: BullMQ worker with Israeli job sources
+- Issue #12 COMPLETE: WorkOS AuthKit authentication (replaced Passport OAuth)
+- Issue #13 COMPLETE: Production deployment configuration (Docker + docs)
+- Phase 2 COMPLETE: All issues implemented
+- All tests passing: pnpm test, pnpm typecheck, pnpm lint
 
 **Next steps:**
-1. Pick next issue: #10 (Match score UI) or #11 (BullMQ worker)
-2. Use TDD and announce which skills you're using
-3. Use `finishing-a-development-branch` skill before completing work
+1. Run `pnpm docker:up` to start Postgres + Redis
+2. Run `pnpm db:migrate` then `pnpm db:seed` (seeds Israeli job sources)
+3. Run `pnpm dev` to start all services (worker will begin ingesting jobs)
+4. Configure WorkOS credentials (see docs/deployment.md)
+5. Deploy to production (see docs/deployment.md)
 
 **Run the app:** `pnpm dev` (API:3001, Web:3000). Ensure .env exists and Postgres is up (`pnpm docker:up`).
 ```
@@ -53,21 +59,22 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 | #6 | Web: optimistic UX tests | CLOSED |
 | #9 | Web: Add job list with filtering and pagination UI | CLOSED |
 | #8 | API: Add matching endpoint to score jobs against CV | CLOSED |
+| #10 | Web: Add match score display in job detail | CLOSED |
+| #11 | Worker: Add BullMQ job queue for ingestion | CLOSED |
+| #12 | API: Complete OAuth2 authentication (WorkOS) | CLOSED |
+| #13 | Infra: Add production deployment configuration | CLOSED |
 
 ### Open (Phase 2)
 
 | Issue | Title | Priority |
 |-------|-------|----------|
-| #10 | Web: Add match score display in job detail | High |
-| #11 | Worker: Add BullMQ job queue for ingestion | High |
-| #12 | API: Complete OAuth2 authentication (Google/GitHub) | Medium |
-| #13 | Infra: Add production deployment configuration | Low |
+| #10 | Web: Add match score display in job detail | **COMPLETE** |
+| #11 | Worker: Add BullMQ job queue for ingestion | **COMPLETE** |
+| #12 | API: Complete OAuth2 authentication | **COMPLETE** (WorkOS AuthKit) |
+| #13 | Infra: Add production deployment configuration | **COMPLETE** |
 
-### Recommended Order
-1. **#10** (Match score UI) - Uses new matching API from #8
-2. **#11** (BullMQ) - Enables automatic job ingestion
-3. **#12** (OAuth) - Security requirement
-4. **#13** (Deployment) - Go live
+### All Phase 2 Issues Complete
+Authentication has been migrated to WorkOS AuthKit. See `docs/deployment.md` for setup instructions.
 
 ---
 
@@ -82,6 +89,10 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - `POST /artefacts` - Create agent artefact
 - `GET /health` - Health check
 - `GET /me` - Current user (requires auth)
+- `GET /auth/login` - Redirect to WorkOS login
+- `GET /auth/callback` - OAuth callback handler
+- `GET /auth/me` - Get authenticated user (requires JWT)
+- `POST /auth/logout` - Logout (stateless)
 - `GET /profile` - Get tenant's matching profile
 - `PUT /profile` - Create/update matching profile (desiredRoles, seniority, location, mustHaveSkills)
 - `POST /matching/score` - Score a job against provided profile (stateless)
@@ -98,9 +109,19 @@ I'm continuing work on the CV Automation project. Use these files as the handoff
 - Typed API client in `lib/api.ts`
 
 ### Worker (apps/worker)
-- Greenhouse ingestion with idempotency
-- RSS ingestion (placeholder)
+- **BullMQ job queue** for scheduled ingestion (every 2 hours)
+- **Modular source adapters**:
+  - Greenhouse board adapter (Israeli tech companies: Wix, Monday, Taboola, etc.)
+  - RemoteOK API adapter (global remote jobs)
+  - Remotive API adapter (remote jobs with Israel/EMEA filter)
+- **Junior developer filtering**: Keywords filter for entry-level positions
+- **Idempotent upserts**: Content hashing to prevent duplicates
 - Health check
+- Run with: `pnpm dev:worker` or `pnpm --filter @cv/worker start`
+
+**Job Sources Configured** (via seed):
+- 8 Israeli tech companies (Greenhouse boards)
+- 2 remote job aggregators (RemoteOK, Remotive)
 
 ### Shared Packages
 - `@cv/db` - Prisma client and schema

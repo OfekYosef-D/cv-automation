@@ -28,6 +28,20 @@ vi.mock("../lib/api", () => ({
     pageSize: 20,
     total: 1
   })),
+  getJobDetail: vi.fn(async () => ({
+    id: "job-1",
+    title: "Fullstack Developer",
+    description: "Build web apps",
+    location: "Remote",
+    url: "https://example.com/jobs/fullstack",
+    postedAt: null,
+    artefacts: [{ id: "art-1", status: "DRAFT", content: "Tailored summary" }]
+  })),
+  getMatchScore: vi.fn(async () => ({
+    score: 75,
+    explanations: ["role match", "location match"],
+    job: { id: "job-1", title: "Fullstack Developer" }
+  })),
   approveJob: vi.fn(async () => ({})),
   rejectJob: vi.fn(async () => ({})),
   snoozeJob: vi.fn(async () => ({}))

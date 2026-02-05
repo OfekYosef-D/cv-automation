@@ -6,5 +6,8 @@
     "^.+\\.ts$": "ts-jest"
   },
   "testEnvironment": "node",
-  "modulePathIgnorePatterns": ["<rootDir>/dist/"]
+  "modulePathIgnorePatterns": ["<rootDir>/dist/"],
+  "moduleNameMapper": {
+    "^jose$": "<rootDir>/test/__mocks__/jose.ts"
+  }
 }
