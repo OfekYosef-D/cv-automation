@@ -13,6 +13,7 @@ import { WorkOSAuthGuard } from "./guards/workos-auth.guard";
 import { LoginQueryDto } from "./dto/login-query.dto";
 import { CallbackQueryDto } from "./dto/callback-query.dto";
 import { AuthMeResponseDto } from "./dto/auth-me-response.dto";
+import { getAuthCookieOptions } from "./auth-cookie";
 
 interface AuthenticatedUser {
   id: string;
@@ -69,21 +70,9 @@ export class AuthController {
       await this.authService.syncUser(authResponse.user);
 
       const token = authResponse.accessToken;
-      const isProd = process.env.NODE_ENV === "production";
-
-      const rawSameSite = process.env.COOKIE_SAME_SITE?.toLowerCase() ?? "lax";
-      const sameSite =
-        rawSameSite === "none" || rawSameSite === "strict"
-          ? rawSameSite
-          : "lax";
-      const secure = sameSite === "none" ? true : isProd;
-
       res.cookie("access_token", token, {
-        httpOnly: true,
-        secure,
-        sameSite: sameSite as "lax" | "strict" | "none",
+        ...getAuthCookieOptions(),
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        path: "/"
       });
 
       res.redirect(`${frontendUrl}/auth/callback`);
@@ -113,7 +102,7 @@ export class AuthController {
    */
   @Post("logout")
   logout(@Res() res: Response): Response {
-    res.clearCookie("access_token", { path: "/" });
+    res.clearCookie("access_token", getAuthCookieOptions());
     return res.json({ message: "Logged out successfully" });
   }
 }
