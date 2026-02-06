@@ -13,25 +13,43 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => mockSearchParams
 }));
 
-vi.mock("../lib/api", () => ({
-  getJobs: vi.fn(async () => ({
-    jobs: [
-      {
-        id: "job-1",
-        title: "Fullstack Developer",
-        location: "Remote",
-        approvalStatus: "PENDING",
-        latestArtefact: { id: "art-1", status: "DRAFT", content: "Tailored summary" }
-      }
-    ],
-    page: 1,
-    pageSize: 20,
-    total: 1
-  })),
-  approveJob: vi.fn(async () => ({})),
-  rejectJob: vi.fn(async () => ({})),
-  snoozeJob: vi.fn(async () => ({}))
-}));
+vi.mock("../lib/api", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api")>("../lib/api");
+  return {
+    ...actual,
+    getJobs: vi.fn(async () => ({
+      jobs: [
+        {
+          id: "job-1",
+          title: "Fullstack Developer",
+          location: "Remote",
+          approvalStatus: "PENDING",
+          latestArtefact: { id: "art-1", status: "DRAFT", content: "Tailored summary" }
+        }
+      ],
+      page: 1,
+      pageSize: 20,
+      total: 1
+    })),
+    getJobDetail: vi.fn(async () => ({
+      id: "job-1",
+      title: "Fullstack Developer",
+      description: "Build web apps",
+      location: "Remote",
+      url: "https://example.com/jobs/fullstack",
+      postedAt: null,
+      artefacts: [{ id: "art-1", status: "DRAFT", content: "Tailored summary" }]
+    })),
+    getMatchScore: vi.fn(async () => ({
+      score: 75,
+      explanations: ["role match", "location match"],
+      job: { id: "job-1", title: "Fullstack Developer" }
+    })),
+    approveJob: vi.fn(async () => ({})),
+    rejectJob: vi.fn(async () => ({})),
+    snoozeJob: vi.fn(async () => ({}))
+  };
+});
 
 describe("Approval Console actions", () => {
   beforeEach(() => {
@@ -47,8 +65,10 @@ describe("Approval Console actions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
 
+    // Status badges update optimistically (shown in both list and detail panel)
     await waitFor(() => {
-      expect(screen.getByText("Current: APPROVED")).toBeInTheDocument();
+      const statusBadges = screen.getAllByText("APPROVED");
+      expect(statusBadges.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -61,8 +81,10 @@ describe("Approval Console actions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reject" }));
 
+    // Status badges update optimistically (shown in both list and detail panel)
     await waitFor(() => {
-      expect(screen.getByText("Current: REJECTED")).toBeInTheDocument();
+      const statusBadges = screen.getAllByText("REJECTED");
+      expect(statusBadges.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -75,8 +97,10 @@ describe("Approval Console actions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Snooze" }));
 
+    // Status badges update optimistically (shown in both list and detail panel)
     await waitFor(() => {
-      expect(screen.getByText("Current: SNOOZED")).toBeInTheDocument();
+      const statusBadges = screen.getAllByText("SNOOZED");
+      expect(statusBadges.length).toBeGreaterThanOrEqual(1);
     });
   });
 

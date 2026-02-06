@@ -1,4 +1,5 @@
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth";
 
 export const metadata = {
   title: "Approval Console",
@@ -8,7 +9,9 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900">{children}</body>
+      <body className="min-h-screen bg-slate-50 text-slate-900" suppressHydrationWarning>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

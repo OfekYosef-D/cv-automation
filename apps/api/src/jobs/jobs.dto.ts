@@ -51,6 +51,7 @@ export interface JobDetailDto {
   title: string;
   description: string;
   location: string | null;
+  url: string;
   postedAt: string | null;
   artefacts: Array<{
     id: string;

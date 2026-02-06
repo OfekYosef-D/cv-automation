@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback, useRef } from "react";
+import { useState, useTransition, useEffect, useCallback, useRef, type ReactElement } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { approveJob, rejectJob, snoozeJob, getJobs } from "@/lib/api";
-import type { ApprovalStatusFilter, Job, JobListResponse } from "@/lib/types";
+import type { ApprovalStatus, ApprovalStatusFilter, Job, JobListResponse } from "@/lib/types";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Pagination } from "./pagination";
 import { StatusFilter } from "./status-filter";
+import { JobDetailPanel } from "./job-detail-panel";
 
 const PAGE_SIZE = 20;
 const VALID_STATUSES: ApprovalStatusFilter[] = ["ALL", "PENDING", "APPROVED", "REJECTED", "SNOOZED"];
@@ -17,7 +18,7 @@ function isValidApprovalStatus(value: string | null): value is ApprovalStatusFil
   return value !== null && VALID_STATUSES.includes(value as ApprovalStatusFilter);
 }
 
-export function ApprovalConsole() {
+export function ApprovalConsole(): ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -33,7 +34,7 @@ export function ApprovalConsole() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
-  const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const [statuses, setStatuses] = useState<Record<string, ApprovalStatus>>({});
   const [error, setError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -127,13 +128,16 @@ export function ApprovalConsole() {
   };
 
   const selectedJob = jobs.find((j) => j.id === selectedJobId);
-  const actionsDisabled = isPending || !selectedJob;
 
   const handleAction = (action: "approve" | "reject" | "snooze"): void => {
     if (!selectedJob) return;
 
     const actionFn = { approve: approveJob, reject: rejectJob, snooze: snoozeJob }[action];
-    const statusMap = { approve: "APPROVED", reject: "REJECTED", snooze: "SNOOZED" };
+    const statusMap: Record<"approve" | "reject" | "snooze", ApprovalStatus> = {
+      approve: "APPROVED",
+      reject: "REJECTED",
+      snooze: "SNOOZED"
+    };
 
     startTransition(async () => {
       try {
@@ -146,7 +150,12 @@ export function ApprovalConsole() {
     });
   };
 
-  const getJobStatus = (job: Job): string => statuses[job.id] ?? job.approvalStatus;
+  const getJobStatus = (job: Job): ApprovalStatus =>
+    statuses[job.id] ?? job.approvalStatus;
+
+  const selectedApprovalStatus: ApprovalStatus = selectedJob
+    ? getJobStatus(selectedJob)
+    : "PENDING";
 
   // Loading state
   if (isLoading) {
@@ -232,34 +241,17 @@ export function ApprovalConsole() {
         )}
       </Card>
 
-      {/* Artefact Panel */}
-      <Card className="flex-1 p-6">
-        <h2 className="text-lg font-semibold">Artefact</h2>
-        {selectedJob ? (
-          <>
-            <h3 className="mt-4 font-medium text-slate-900">{selectedJob.title}</h3>
-            <p className="mt-2 text-slate-700">
-              {selectedJob.latestArtefact?.content ?? "No artefact yet"}
-            </p>
-            <div className="mt-6 flex gap-3">
-              <Button type="button" disabled={actionsDisabled} onClick={() => handleAction("approve")}>
-                Approve
-              </Button>
-              <Button type="button" variant="outline" disabled={actionsDisabled} onClick={() => handleAction("reject")}>
-                Reject
-              </Button>
-              <Button type="button" variant="outline" disabled={actionsDisabled} onClick={() => handleAction("snooze")}>
-                Snooze
-              </Button>
-            </div>
-            {statuses[selectedJob.id] && (
-              <Badge className="mt-4">Current: {statuses[selectedJob.id]}</Badge>
-            )}
-            {error && <p className="mt-2 text-sm text-red-600" role="alert">{error}</p>}
-          </>
-        ) : (
-          <p className="mt-4 text-slate-500">Select a job to view details</p>
-        )}
+      {/* Job Detail Panel */}
+      <Card className="flex-1 p-6 overflow-auto">
+        <JobDetailPanel
+          jobId={selectedJobId}
+          approvalStatus={selectedApprovalStatus}
+          onApprove={() => handleAction("approve")}
+          onReject={() => handleAction("reject")}
+          onSnooze={() => handleAction("snooze")}
+          isPending={isPending}
+          actionError={error}
+        />
       </Card>
     </section>
   );

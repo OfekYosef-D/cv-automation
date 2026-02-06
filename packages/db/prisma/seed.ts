@@ -2,6 +2,139 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/**
+ * Israeli tech company job sources configuration.
+ * These use Greenhouse boards for direct job fetching.
+ */
+const ISRAELI_COMPANY_SOURCES = [
+  {
+    id: "source-wix",
+    name: "Wix",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/wix",
+      companyName: "Wix",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-monday",
+    name: "Monday.com",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/mondaydotcom",
+      companyName: "Monday.com",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-taboola",
+    name: "Taboola",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/taboola",
+      companyName: "Taboola",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-ironsource",
+    name: "ironSource (Unity)",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/ironsource",
+      companyName: "ironSource",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-similarweb",
+    name: "SimilarWeb",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/similarweb",
+      companyName: "SimilarWeb",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-fiverr",
+    name: "Fiverr",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/fiverr",
+      companyName: "Fiverr",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-checkmarx",
+    name: "Checkmarx",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/checkmarx",
+      companyName: "Checkmarx",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  },
+  {
+    id: "source-cyberark",
+    name: "CyberArk",
+    type: "greenhouse",
+    config: {
+      boardUrl: "https://boards.greenhouse.io/cyberark",
+      companyName: "CyberArk",
+      location: "Israel",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"]
+    }
+  }
+];
+
+/**
+ * Remote job aggregator sources.
+ * These pull from global remote job boards with Israel-friendly filters.
+ */
+const REMOTE_JOB_SOURCES = [
+  {
+    id: "source-remoteok",
+    name: "RemoteOK (Developer Jobs)",
+    type: "remoteok",
+    config: {
+      category: "dev",
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"],
+      limit: 100
+    }
+  },
+  {
+    id: "source-remotive",
+    name: "Remotive (Software Dev)",
+    type: "remotive",
+    config: {
+      category: "software-dev",
+      location: "Israel", // Will include EMEA, worldwide
+      keywords: ["junior", "entry", "graduate"],
+      roles: ["software", "developer", "engineer", "fullstack", "frontend", "backend"],
+      limit: 100
+    }
+  }
+];
+
 async function main() {
   // Create or get tenant
   const tenant = await prisma.tenant.upsert({
@@ -15,7 +148,7 @@ async function main() {
 
   console.log("Created tenant:", tenant.id);
 
-  // Create a job source
+  // Create demo/manual job source (for sample jobs)
   const jobSource = await prisma.jobSource.upsert({
     where: { id: "source-1" },
     update: {},
@@ -29,6 +162,40 @@ async function main() {
   });
 
   console.log("Created job source:", jobSource.id);
+
+  // Create Israeli company job sources
+  console.log("\nCreating Israeli company job sources...");
+  for (const source of ISRAELI_COMPANY_SOURCES) {
+    await prisma.jobSource.upsert({
+      where: { id: source.id },
+      update: { config: source.config },
+      create: {
+        id: source.id,
+        tenantId: tenant.id,
+        type: source.type,
+        name: source.name,
+        config: source.config
+      }
+    });
+    console.log(`  Created source: ${source.name} (${source.type})`);
+  }
+
+  // Create remote job aggregator sources
+  console.log("\nCreating remote job aggregator sources...");
+  for (const source of REMOTE_JOB_SOURCES) {
+    await prisma.jobSource.upsert({
+      where: { id: source.id },
+      update: { config: source.config },
+      create: {
+        id: source.id,
+        tenantId: tenant.id,
+        type: source.type,
+        name: source.name,
+        config: source.config
+      }
+    });
+    console.log(`  Created source: ${source.name} (${source.type})`);
+  }
 
   // Create a CV and CV version for artefacts
   const cv = await prisma.cv.upsert({
@@ -152,7 +319,11 @@ async function main() {
     console.log("Created artefact for job:", artefact.jobId);
   }
 
-  console.log("\n✅ Seed complete! Refresh your browser to see the jobs.");
+  const totalSources = ISRAELI_COMPANY_SOURCES.length + REMOTE_JOB_SOURCES.length + 1;
+  console.log(`\n✅ Seed complete!`);
+  console.log(`   - ${totalSources} job sources configured (${ISRAELI_COMPANY_SOURCES.length} Israeli companies + ${REMOTE_JOB_SOURCES.length} remote aggregators)`);
+  console.log(`   - Run 'pnpm --filter @cv/worker start' to begin job ingestion`);
+  console.log(`   - Refresh your browser to see the jobs`);
 }
 
 main()

@@ -34,6 +34,13 @@ export interface JobDetailResponse {
   title: string;
   description: string;
   location: string | null;
+  url: string;
   postedAt: string | null;
   artefacts: Artefact[];
+}
+
+export interface MatchScoreResponse {
+  score: number;
+  explanations: string[];
+  job: { id: string; title: string };
 }
