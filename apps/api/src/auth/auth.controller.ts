@@ -102,10 +102,9 @@ export class AuthController {
   @Get("me")
   @UseGuards(WorkOSAuthGuard)
   getMe(@Req() req: Request): AuthMeResponseDto {
-    const { id, email, name, avatarUrl, tenantId } =
-      req.user as AuthenticatedUser;
+    const { id, email, name, avatarUrl } = req.user as AuthenticatedUser;
 
-    return { id, email, name, avatarUrl, tenantId };
+    return { id, email, name, avatarUrl, tenantId: req.tenantId! };
   }
 
   /**

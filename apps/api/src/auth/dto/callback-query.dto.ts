@@ -3,9 +3,9 @@ import { IsOptional, IsString } from "class-validator";
 export class CallbackQueryDto {
   @IsOptional()
   @IsString()
-  code?: string;
+  code!: string;
 
   @IsOptional()
   @IsString()
-  error?: string;
+  error!: string;
 }
