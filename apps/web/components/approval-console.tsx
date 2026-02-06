@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback, useRef } from "react";
+import { useState, useTransition, useEffect, useCallback, useRef, type ReactElement } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { approveJob, rejectJob, snoozeJob, getJobs } from "@/lib/api";
 import type { ApprovalStatus, ApprovalStatusFilter, Job, JobListResponse } from "@/lib/types";
@@ -18,7 +18,7 @@ function isValidApprovalStatus(value: string | null): value is ApprovalStatusFil
   return value !== null && VALID_STATUSES.includes(value as ApprovalStatusFilter);
 }
 
-export function ApprovalConsole() {
+export function ApprovalConsole(): ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -34,7 +34,7 @@ export function ApprovalConsole() {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
-  const [statuses, setStatuses] = useState<Record<string, string>>({});
+  const [statuses, setStatuses] = useState<Record<string, ApprovalStatus>>({});
   const [error, setError] = useState<string | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -133,7 +133,11 @@ export function ApprovalConsole() {
     if (!selectedJob) return;
 
     const actionFn = { approve: approveJob, reject: rejectJob, snooze: snoozeJob }[action];
-    const statusMap = { approve: "APPROVED", reject: "REJECTED", snooze: "SNOOZED" };
+    const statusMap: Record<"approve" | "reject" | "snooze", ApprovalStatus> = {
+      approve: "APPROVED",
+      reject: "REJECTED",
+      snooze: "SNOOZED"
+    };
 
     startTransition(async () => {
       try {
@@ -146,7 +150,12 @@ export function ApprovalConsole() {
     });
   };
 
-  const getJobStatus = (job: Job): string => statuses[job.id] ?? job.approvalStatus;
+  const getJobStatus = (job: Job): ApprovalStatus =>
+    statuses[job.id] ?? job.approvalStatus;
+
+  const selectedApprovalStatus: ApprovalStatus = selectedJob
+    ? getJobStatus(selectedJob)
+    : "PENDING";
 
   // Loading state
   if (isLoading) {
@@ -236,7 +245,7 @@ export function ApprovalConsole() {
       <Card className="flex-1 p-6 overflow-auto">
         <JobDetailPanel
           jobId={selectedJobId}
-          approvalStatus={getJobStatus(selectedJob ?? { id: "", title: "", location: null, postedAt: null, approvalStatus: "PENDING", latestArtefact: null }) as ApprovalStatus}
+          approvalStatus={selectedApprovalStatus}
           onApprove={() => handleAction("approve")}
           onReject={() => handleAction("reject")}
           onSnooze={() => handleAction("snooze")}

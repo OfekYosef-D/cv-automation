@@ -20,9 +20,10 @@ export function createRedisConnection(): Redis {
 }
 
 /**
- * Shared connection options for BullMQ queues and workers.
+ * Create connection options with a new Redis connection for BullMQ.
+ * Each call creates a new connection.
  */
-export function getConnectionOptions() {
+export function getConnectionOptions(): { connection: Redis } {
   return {
     connection: createRedisConnection()
   };

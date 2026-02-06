@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { getJobDetail, getMatchScore } from "@/lib/api";
+import { useState, useEffect, useRef, useCallback, type ReactElement } from "react";
+import { ApiError, getJobDetail, getMatchScore } from "@/lib/api";
 import type { JobDetailResponse, Artefact, ApprovalStatus } from "@/lib/types";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -49,7 +49,10 @@ function stripHtml(html: string): string {
 
 function JobDetailSkeleton() {
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div
+      className="space-y-6 animate-in fade-in duration-300"
+      data-testid="job-detail-skeleton"
+    >
       {/* Header skeleton */}
       <div className="space-y-3">
         <div className="flex gap-2">
@@ -165,7 +168,7 @@ export function JobDetailPanel({
   onSnooze,
   isPending,
   actionError
-}: JobDetailPanelProps) {
+}: JobDetailPanelProps): ReactElement {
   const [jobDetail, setJobDetail] = useState<JobDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -213,8 +216,10 @@ export function JobDetailPanel({
           setMatchExplanations(scoreResult.value.explanations);
         } else {
           // Check if it's a 400 error (no profile configured)
-          const errorMessage = scoreResult.reason?.message ?? "";
-          if (errorMessage.includes("400")) {
+          if (
+            scoreResult.reason instanceof ApiError &&
+            scoreResult.reason.status === 400
+          ) {
             setNoProfile(true);
           } else {
             setMatchError("Failed to load match score");

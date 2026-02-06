@@ -1,11 +1,17 @@
-"use client";
-
-import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function AuthErrorPage() {
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+type AuthErrorPageProps = {
+  searchParams?: { error?: string | string[] };
+};
+
+export default function AuthErrorPage({ searchParams }: AuthErrorPageProps) {
+  const error =
+    typeof searchParams?.error === "string"
+      ? searchParams.error
+      : Array.isArray(searchParams?.error)
+        ? searchParams?.error[0]
+        : undefined;
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 
   const errorMessage = error
     ? error
@@ -44,15 +50,12 @@ export default function AuthErrorPage() {
             Return to home
           </Link>
 
-          <button
-            onClick={() => {
-              const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
-              window.location.href = `${apiBase}/auth/login`;
-            }}
+          <a
+            href={`${apiBase}/auth/login`}
             className="block w-full px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors"
           >
             Try again
-          </button>
+          </a>
         </div>
       </div>
     </div>

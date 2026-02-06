@@ -26,14 +26,18 @@ function AuthCallbackContent() {
     if (state.status !== "success" || redirectScheduled.current) return;
     redirectScheduled.current = true;
 
-    // Refresh user from cookie (just set by API redirect)
-    refreshUser();
-
     const timeout = setTimeout(() => {
       router.push("/");
     }, 1500);
 
-    return () => clearTimeout(timeout);
+    // Refresh user from cookie (just set by API redirect)
+    refreshUser().catch(() => {
+      // Ignore refresh failures; redirect still proceeds on timeout.
+    });
+
+    return () => {
+      clearTimeout(timeout);
+    };
   }, [state.status, router, refreshUser]);
 
   return (

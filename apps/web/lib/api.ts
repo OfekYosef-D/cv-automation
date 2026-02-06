@@ -2,6 +2,15 @@ import type { JobDetailResponse, JobListResponse, MatchScoreResponse } from "./t
 
 export type { JobDetailResponse, JobListResponse, MatchScoreResponse };
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
 const TENANT_ID = process.env.NEXT_PUBLIC_TENANT_ID ?? "t1";
 
@@ -18,7 +27,7 @@ async function apiFetch(path: string, init?: RequestInit) {
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    throw new ApiError(response.status, `API error: ${response.status}`);
   }
 
   return response.json();

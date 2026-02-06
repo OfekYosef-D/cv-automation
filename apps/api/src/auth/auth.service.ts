@@ -21,12 +21,20 @@ function getWorkOS(): WorkOS {
 
 function getJWKS() {
   if (!jwks) {
-    const clientId = process.env.WORKOS_CLIENT_ID;
+    const clientId = getWorkOSClientId();
     jwks = createRemoteJWKSet(
       new URL(`https://api.workos.com/sso/jwks/${clientId}`)
     );
   }
   return jwks;
+}
+
+function getWorkOSClientId(): string {
+  const clientId = process.env.WORKOS_CLIENT_ID;
+  if (!clientId) {
+    throw new Error("WORKOS_CLIENT_ID environment variable is required");
+  }
+  return clientId;
 }
 
 export interface AuthenticatedUser {
@@ -44,7 +52,7 @@ export class AuthService {
    * Generate WorkOS authorization URL for login.
    */
   getAuthorizationUrl(screenHint?: "sign-up" | "sign-in"): string {
-    const clientId = process.env.WORKOS_CLIENT_ID!;
+    const clientId = getWorkOSClientId();
     const redirectUri = `${process.env.API_URL ?? "http://localhost:3001"}/auth/callback`;
 
     return getWorkOS().userManagement.getAuthorizationUrl({
@@ -59,7 +67,7 @@ export class AuthService {
    * Exchange authorization code for user and tokens.
    */
   async authenticateWithCode(code: string) {
-    const clientId = process.env.WORKOS_CLIENT_ID!;
+    const clientId = getWorkOSClientId();
 
     const authResponse = await getWorkOS().userManagement.authenticateWithCode({
       code,

@@ -15,8 +15,12 @@ export class WorkOSAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
     const cookieToken = request.cookies?.access_token;
+    const hasBearer = authHeader?.startsWith("Bearer ") ?? false;
+    const token = hasBearer ? authHeader!.slice(7) : cookieToken;
 
-    const token = authHeader?.replace("Bearer ", "") ?? cookieToken;
+    if (!token && authHeader && !hasBearer) {
+      throw new UnauthorizedException("Invalid authorization header format");
+    }
 
     if (!token) {
       throw new UnauthorizedException("Missing authorization token or cookie");
@@ -27,7 +31,10 @@ export class WorkOSAuthGuard implements CanActivate {
       const payload = await this.authService.verifyAccessToken(token);
 
       // Get user from database using WorkOS sub claim
-      const workosId = payload.sub as string;
+      const workosId = payload.sub;
+      if (!workosId || typeof workosId !== "string") {
+        throw new UnauthorizedException("Invalid token: missing subject claim");
+      }
       const user = await this.authService.getUserByWorkosId(workosId);
 
       if (!user) {

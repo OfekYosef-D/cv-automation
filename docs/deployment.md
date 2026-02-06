@@ -4,7 +4,7 @@ This document covers deploying the CV Automation application to production.
 
 ## Architecture Overview
 
-The application consists of four services:
+The application consists of five services:
 
 | Service | Description | Port |
 |---------|-------------|------|
@@ -32,7 +32,7 @@ Best for: VPS, dedicated servers, or on-premise deployment.
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/your-org/cv-automation.git
+   git clone <replace-with-your-repo-url>
    cd cv-automation
    ```
 
@@ -193,7 +193,7 @@ WorkOS AuthKit provides a hosted authentication UI with Google, GitHub, Microsof
 4. User signs in with their preferred provider
 5. WorkOS redirects to `/auth/callback` with authorization code
 6. API exchanges code for tokens and creates/updates user in database
-7. API redirects to frontend with access token
+7. API sets an HttpOnly auth cookie and redirects to the frontend
 
 ### JWT Verification
 
@@ -269,8 +269,8 @@ railway logs
 
 ### Debug Mode
 
-Set `LOG_LEVEL=debug` for verbose logging:
+Set `LOG_LEVEL=debug` in your `.env` file or shell for verbose logging:
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d -e LOG_LEVEL=debug
+LOG_LEVEL=debug docker compose -f docker-compose.prod.yml up -d
 ```

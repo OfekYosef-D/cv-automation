@@ -92,7 +92,7 @@ export class RemoteOKAdapter implements JobSourceAdapter {
       }
 
       // Apply limit if specified
-      if (config.limit && normalizedJobs.length > config.limit) {
+      if (config.limit !== undefined && normalizedJobs.length > config.limit) {
         normalizedJobs = normalizedJobs.slice(0, config.limit);
       }
 

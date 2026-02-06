@@ -3,12 +3,17 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { JobDetailPanel } from "../components/job-detail-panel";
 import * as api from "../lib/api";
+import { ApiError } from "../lib/api";
 
 // Mock the API module
-vi.mock("../lib/api", () => ({
-  getJobDetail: vi.fn(),
-  getMatchScore: vi.fn()
-}));
+vi.mock("../lib/api", async () => {
+  const actual = await vi.importActual<typeof import("../lib/api")>("../lib/api");
+  return {
+    ...actual,
+    getJobDetail: vi.fn(),
+    getMatchScore: vi.fn()
+  };
+});
 
 const mockGetJobDetail = api.getJobDetail as ReturnType<typeof vi.fn>;
 const mockGetMatchScore = api.getMatchScore as ReturnType<typeof vi.fn>;
@@ -72,8 +77,7 @@ describe("JobDetailPanel", () => {
     );
 
     // Should show skeleton elements
-    const skeletons = document.querySelectorAll('[class*="animate"]');
-    expect(skeletons.length).toBeGreaterThan(0);
+    expect(screen.getByTestId("job-detail-skeleton")).toBeInTheDocument();
   });
 
   it("fetches and displays job details when jobId is provided", async () => {
@@ -341,7 +345,7 @@ describe("JobDetailPanel", () => {
     });
 
     it("shows configure profile message when no profile exists (400 error)", async () => {
-      mockGetMatchScore.mockRejectedValue(new Error("API error: 400"));
+      mockGetMatchScore.mockRejectedValue(new ApiError(400, "API error: 400"));
 
       render(
         <JobDetailPanel
@@ -360,7 +364,7 @@ describe("JobDetailPanel", () => {
     });
 
     it("shows error message when match score API fails (non-400 error)", async () => {
-      mockGetMatchScore.mockRejectedValue(new Error("API error: 500"));
+      mockGetMatchScore.mockRejectedValue(new ApiError(500, "API error: 500"));
 
       render(
         <JobDetailPanel

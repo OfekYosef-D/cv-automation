@@ -5,12 +5,22 @@ import {
   Query,
   Req,
   Res,
-  UseGuards,
-  UnauthorizedException
+  UseGuards
 } from "@nestjs/common";
 import { Request, Response } from "express";
 import { AuthService } from "./auth.service";
 import { WorkOSAuthGuard } from "./guards/workos-auth.guard";
+import { LoginQueryDto } from "./dto/login-query.dto";
+import { CallbackQueryDto } from "./dto/callback-query.dto";
+import { AuthMeResponseDto } from "./dto/auth-me-response.dto";
+
+interface AuthenticatedUser {
+  id: string;
+  email: string;
+  name: string | null;
+  avatarUrl: string | null;
+  tenantId: string;
+}
 
 @Controller("auth")
 export class AuthController {
@@ -21,7 +31,8 @@ export class AuthController {
    * Redirects to WorkOS hosted login page.
    */
   @Get("login")
-  login(@Res() res: Response, @Query("screen") screen?: string) {
+  login(@Res() res: Response, @Query() query: LoginQueryDto): void {
+    const { screen } = query;
     const screenHint = screen === "sign-up" ? "sign-up" : "sign-in";
     const authUrl = this.authService.getAuthorizationUrl(screenHint);
     res.redirect(authUrl);
@@ -33,19 +44,21 @@ export class AuthController {
    */
   @Get("callback")
   async callback(
-    @Query("code") code: string,
-    @Query("error") error: string,
+    @Query() query: CallbackQueryDto,
     @Res() res: Response
-  ) {
+  ): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:3000";
+    const { code, error } = query;
 
     if (error) {
       // Redirect to frontend with error
-      return res.redirect(`${frontendUrl}/auth/error?error=${encodeURIComponent(error)}`);
+      res.redirect(`${frontendUrl}/auth/error?error=${encodeURIComponent(error)}`);
+      return;
     }
 
     if (!code) {
-      return res.redirect(`${frontendUrl}/auth/error?error=missing_code`);
+      res.redirect(`${frontendUrl}/auth/error?error=missing_code`);
+      return;
     }
 
     try {
@@ -74,9 +87,11 @@ export class AuthController {
       });
 
       res.redirect(`${frontendUrl}/auth/callback`);
+      return;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Authentication failed";
-      res.redirect(`${frontendUrl}/auth/error?error=${encodeURIComponent(message)}`);
+      console.error("Auth callback failed", err);
+      res.redirect(`${frontendUrl}/auth/error?error=auth_error`);
+      return;
     }
   }
 
@@ -86,26 +101,11 @@ export class AuthController {
    */
   @Get("me")
   @UseGuards(WorkOSAuthGuard)
-  getMe(@Req() req: Request) {
-    const user = req.user as {
-      id: string;
-      email: string;
-      name: string | null;
-      avatarUrl: string | null;
-      tenantId: string;
-    };
+  getMe(@Req() req: Request): AuthMeResponseDto {
+    const { id, email, name, avatarUrl, tenantId } =
+      req.user as AuthenticatedUser;
 
-    if (!user) {
-      throw new UnauthorizedException("User not found");
-    }
-
-    return {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatarUrl: user.avatarUrl,
-      tenantId: user.tenantId
-    };
+    return { id, email, name, avatarUrl, tenantId };
   }
 
   /**
@@ -113,7 +113,7 @@ export class AuthController {
    * Clears the HttpOnly cookie.
    */
   @Post("logout")
-  logout(@Res() res: Response) {
+  logout(@Res() res: Response): Response {
     res.clearCookie("access_token", { path: "/" });
     return res.json({ message: "Logged out successfully" });
   }

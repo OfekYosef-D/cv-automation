@@ -127,6 +127,12 @@ export const DEVELOPER_ROLE_KEYWORDS = [
   "programmer"
 ];
 
+export interface JuniorFilterConfig {
+  keywords?: string[];
+  roles?: string[];
+  includeUnspecified?: boolean;
+}
+
 /**
  * Check if a job title matches junior-level criteria.
  */
@@ -174,7 +180,7 @@ export function isDeveloperRole(title: string, roles?: string[]): boolean {
  */
 export function filterJuniorDeveloperJobs(
   jobs: NormalizedJob[],
-  config?: { keywords?: string[]; roles?: string[]; includeUnspecified?: boolean }
+  config?: JuniorFilterConfig
 ): NormalizedJob[] {
   const { keywords, roles, includeUnspecified = true } = config || {};
 

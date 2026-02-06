@@ -27,7 +27,7 @@ export function UserMenu() {
         {user?.avatarUrl ? (
           <Image
             src={user.avatarUrl}
-            alt={user.name ?? user.email}
+            alt={user.name ?? user.email ?? "User avatar"}
             width={32}
             height={32}
             className="h-8 w-8 rounded-full"

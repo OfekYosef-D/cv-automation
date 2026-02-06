@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactElement } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
@@ -17,15 +18,17 @@ interface MatchScoreDisplayProps {
   noProfile?: boolean;
 }
 
+interface ScoreColor {
+  bg: string;
+  text: string;
+  ring: string;
+}
+
 /**
  * Get the color class based on score value.
  * green >= 70, yellow >= 40, red < 40
  */
-function getScoreColor(score: number): {
-  bg: string;
-  text: string;
-  ring: string;
-} {
+function getScoreColor(score: number): ScoreColor {
   if (score >= 70) {
     return {
       bg: "bg-green-100",
@@ -61,7 +64,7 @@ function formatExplanation(explanation: string): string {
 /**
  * Core score display component (no loading/error states).
  */
-export function MatchScore({ score, explanations }: MatchScoreProps) {
+export function MatchScore({ score, explanations }: MatchScoreProps): ReactElement {
   const colors = getScoreColor(score);
 
   return (
@@ -108,7 +111,7 @@ export function MatchScore({ score, explanations }: MatchScoreProps) {
 /**
  * Loading skeleton for match score.
  */
-export function MatchScoreSkeleton() {
+export function MatchScoreSkeleton(): ReactElement {
   return (
     <div className="flex items-start gap-4">
       <Skeleton className="h-16 w-16 rounded-full" />
@@ -130,7 +133,7 @@ export function MatchScoreDisplay({
   isLoading,
   error,
   noProfile
-}: MatchScoreDisplayProps) {
+}: MatchScoreDisplayProps): ReactElement | null {
   if (isLoading) {
     return (
       <div className="space-y-3">
