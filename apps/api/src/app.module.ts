@@ -1,4 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
+import { prisma } from "@cv/db";
 
 import { HealthController } from "./health.controller";
 import { AuthModule } from "./auth/auth.module";
@@ -28,6 +30,7 @@ import { ProfileService } from "./profile/profile.service";
     ProfileController
   ],
   providers: [
+    { provide: PrismaClient, useValue: prisma },
     ArtefactsService,
     MatchingService,
     ApprovalsService,
