@@ -92,6 +92,8 @@ model JobSource {
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
   jobs   Job[]
+
+  @@unique([tenantId, type, name])
 }
 
 model Job {

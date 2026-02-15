@@ -1,14 +1,13 @@
 import { Injectable } from "@nestjs/common";
-import { JobSearchQuery, PrismaClient } from "@prisma/client";
+import { JobSearchQuery } from "@prisma/client";
+import { prisma } from "@cv/db";
 import { JobSearchQueryCreateDto } from "./dto/job-search-query-create.dto";
 import { JobSearchQueryDto } from "./dto/job-search-query.dto";
 
 @Injectable()
 export class JobSearchQueryService {
-  constructor(private readonly prisma: PrismaClient) {}
-
   createForTenant(tenantId: string, dto: JobSearchQueryCreateDto): Promise<JobSearchQuery> {
-    return this.prisma.jobSearchQuery.create({
+    return prisma.jobSearchQuery.create({
       data: {
         tenantId,
         provider: dto.provider,
@@ -23,7 +22,7 @@ export class JobSearchQueryService {
   }
 
   listForTenant(tenantId: string): Promise<JobSearchQuery[]> {
-    return this.prisma.jobSearchQuery.findMany({
+    return prisma.jobSearchQuery.findMany({
       where: { tenantId },
       orderBy: { updatedAt: "desc" }
     });
@@ -46,7 +45,7 @@ export class JobSearchQueryService {
       }).filter(([, value]) => value !== undefined)
     );
 
-    const result = await this.prisma.jobSearchQuery.updateMany({
+    const result = await prisma.jobSearchQuery.updateMany({
       where: { id, tenantId },
       data
     });
@@ -55,7 +54,7 @@ export class JobSearchQueryService {
   }
 
   async deleteForTenant(tenantId: string, id: string): Promise<boolean> {
-    const result = await this.prisma.jobSearchQuery.deleteMany({
+    const result = await prisma.jobSearchQuery.deleteMany({
       where: { id, tenantId }
     });
 

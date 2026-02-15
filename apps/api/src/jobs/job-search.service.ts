@@ -98,26 +98,41 @@ export class JobSearchService {
     return crypto.createHash("sha256").update(`${title}::${description}`).digest("hex");
   }
 
-  private canonicalizeUrl(raw: string): string {
-    const url = new URL(raw);
-    url.hash = "";
-    return url.toString();
+  private canonicalizeUrl(raw: string): string | null {
+    const value = raw.trim();
+
+    if (!value) {
+      return null;
+    }
+
+    try {
+      const url = new URL(value);
+      url.hash = "";
+      return url.toString();
+    } catch {
+      console.warn(`[JobSearchService] Invalid URL encountered: ${raw}`);
+      return null;
+    }
   }
 
   private async ensureLiveSource(tenantId: string, provider: string): Promise<JobSource> {
     const name = `live-${provider}`;
 
-    const existing = await this.prisma.jobSource.findFirst({
-      where: { tenantId, type: provider, name }
-    });
-
-    if (existing) return existing;
-
-    return this.prisma.jobSource.create({
-      data: {
+    return this.prisma.jobSource.upsert({
+      where: {
+        tenantId_type_name: {
+          tenantId,
+          type: provider,
+          name
+        }
+      },
+      create: {
         tenantId,
         type: provider,
         name,
+        config: { mode: "live" }
+      },
+      update: {
         config: { mode: "live" }
       }
     });
@@ -237,16 +252,22 @@ export class JobSearchService {
 
       return (payload.jobs_results ?? [])
         .filter((job) => job.job_id && job.title)
-        .map((job) => ({
-          externalId: `serp-${job.job_id!}`,
-          title: job.title!,
-          description: job.description ?? "",
-          location: job.location,
-          url:
-            job.apply_options?.[0]?.link ||
-            job.related_links?.[0]?.link ||
-            "https://www.google.com/search?ibp=htl;jobs"
-        }));
+        .map((job) => {
+          const targetedQuery = [job.title, job.location].filter(Boolean).join(" ");
+
+          return {
+            externalId: `serp-${job.job_id!}`,
+            title: job.title!,
+            description: job.description ?? "",
+            location: job.location,
+            url:
+              job.apply_options?.[0]?.link ||
+              job.related_links?.[0]?.link ||
+              (targetedQuery
+                ? `https://www.google.com/search?q=${encodeURIComponent(targetedQuery)}`
+                : undefined)
+          };
+        });
     }
 
     return [];

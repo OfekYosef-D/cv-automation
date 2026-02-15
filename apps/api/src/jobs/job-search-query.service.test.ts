@@ -1,16 +1,29 @@
+import { prisma } from "@cv/db";
 import { JobSearchQueryService } from "./job-search-query.service";
 
-describe("JobSearchQueryService", () => {
-  const jobSearchQuery = {
-    create: jest.fn(),
-    findMany: jest.fn(),
-    updateMany: jest.fn(),
-    deleteMany: jest.fn()
-  };
+jest.mock("@cv/db", () => ({
+  prisma: {
+    jobSearchQuery: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      updateMany: jest.fn(),
+      deleteMany: jest.fn()
+    }
+  }
+}));
 
-  const service = new JobSearchQueryService({
-    jobSearchQuery
-  } as never);
+describe("JobSearchQueryService", () => {
+  const service = new JobSearchQueryService();
+  const jobSearchQuery = (
+    prisma as unknown as {
+      jobSearchQuery: {
+        create: jest.Mock;
+        findMany: jest.Mock;
+        updateMany: jest.Mock;
+        deleteMany: jest.Mock;
+      };
+    }
+  ).jobSearchQuery;
 
   beforeEach(() => {
     jest.clearAllMocks();
