@@ -15,6 +15,8 @@ import { ApprovalsService } from "./approvals/approvals.service";
 import { JobsController } from "./jobs/jobs.controller";
 import { JobsService } from "./jobs/jobs.service";
 import { JobSearchQueryService } from "./jobs/job-search-query.service";
+import { JobSearchController } from "./jobs/job-search.controller";
+import { JobSearchService } from "./jobs/job-search.service";
 import { ProfileController } from "./profile/profile.controller";
 import { ProfileService } from "./profile/profile.service";
 
@@ -27,6 +29,7 @@ import { ProfileService } from "./profile/profile.service";
     MatchingController,
     ApprovalsController,
     JobsController,
+    JobSearchController,
     ProfileController
   ],
   providers: [
@@ -36,6 +39,7 @@ import { ProfileService } from "./profile/profile.service";
     ApprovalsService,
     JobsService,
     JobSearchQueryService,
+    JobSearchService,
     ProfileService
   ]
 })
