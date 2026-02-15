@@ -213,5 +213,58 @@ describe("Adapters", () => {
       expect(result.jobs[0].externalId).toBe("serp-xyz");
       expect(result.jobs[0].url).toBe("https://example.com/serp-job");
     });
+
+    it("parses relative posted_at timestamps", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-15T12:00:00.000Z"));
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            jobs_results: [
+              {
+                job_id: "rel-1",
+                title: "Junior Backend Developer",
+                apply_options: [{ link: "https://example.com/relative" }],
+                detected_extensions: { posted_at: "2 days ago" }
+              }
+            ]
+          })
+        })
+      );
+
+      const result = await adapter.fetch({ apiKey: "key", query: "junior backend" });
+
+      expect(result.jobs).toHaveLength(1);
+      expect(result.jobs[0].postedAt?.toISOString()).toBe("2026-02-13T12:00:00.000Z");
+
+      vi.useRealTimers();
+    });
+
+    it("falls back to undefined for unparseable posted_at", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            jobs_results: [
+              {
+                job_id: "bad-1",
+                title: "Junior Frontend Engineer",
+                apply_options: [{ link: "https://example.com/bad-date" }],
+                detected_extensions: { posted_at: "sometime recently" }
+              }
+            ]
+          })
+        })
+      );
+
+      const result = await adapter.fetch({ apiKey: "key", query: "junior frontend" });
+
+      expect(result.jobs).toHaveLength(1);
+      expect(result.jobs[0].postedAt).toBeUndefined();
+    });
   });
 });

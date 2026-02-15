@@ -22,6 +22,41 @@ interface SerpApiResponse {
   jobs_results?: SerpApiJob[];
 }
 
+function parseRelativeTime(value: string): Date | undefined {
+  const trimmed = value.trim().toLowerCase();
+  const match = trimmed.match(/^(\d+)\s+(minute|minutes|hour|hours|day|days|week|weeks)\s+ago$/);
+  if (!match) {
+    return undefined;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+
+  const unitMs =
+    unit.startsWith("minute")
+      ? 60_000
+      : unit.startsWith("hour")
+        ? 3_600_000
+        : unit.startsWith("day")
+          ? 86_400_000
+          : 604_800_000;
+
+  return new Date(Date.now() - amount * unitMs);
+}
+
+function parsePostedAt(value?: string): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const absolute = new Date(value);
+  if (!Number.isNaN(absolute.getTime())) {
+    return absolute;
+  }
+
+  return parseRelativeTime(value);
+}
+
 export class SerpApiAdapter implements JobSourceAdapter {
   readonly type = "serpapi" as const;
   readonly name = "SerpAPI";
@@ -83,9 +118,7 @@ export class SerpApiAdapter implements JobSourceAdapter {
       description: job.description ?? "",
       location: job.location,
       url,
-      postedAt: job.detected_extensions?.posted_at
-        ? new Date(job.detected_extensions.posted_at)
-        : undefined,
+      postedAt: parsePostedAt(job.detected_extensions?.posted_at),
       tags: ["serpapi"]
     };
   }

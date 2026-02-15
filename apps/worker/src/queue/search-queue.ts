@@ -114,26 +114,26 @@ async function ensureJobSourceForQuery(
 ): Promise<string> {
   const sourceName = `realtime-query-${queryId}`;
 
-  const existing = await prisma.jobSource.findFirst({
+  const source = await prisma.jobSource.upsert({
     where: {
-      tenantId,
-      type: provider,
-      name: sourceName
-    }
-  });
-
-  if (existing) return existing.id;
-
-  const created = await prisma.jobSource.create({
-    data: {
+      tenantId_type_name: {
+        tenantId,
+        type: provider,
+        name: sourceName
+      }
+    },
+    create: {
       tenantId,
       type: provider,
       name: sourceName,
       config: { queryId }
+    },
+    update: {
+      config: { queryId }
     }
   });
 
-  return created.id;
+  return source.id;
 }
 
 async function upsertJob(
