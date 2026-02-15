@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE "JobSearchQuery" (
     "id" TEXT NOT NULL,
     "tenantId" TEXT NOT NULL,
