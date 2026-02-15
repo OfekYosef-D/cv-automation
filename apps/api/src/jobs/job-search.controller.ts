@@ -9,12 +9,13 @@ import {
   Post,
   Req
 } from "@nestjs/common";
+import { JobSearchQuery } from "@prisma/client";
 import { Request } from "express";
 import { JobSearchQueryCreateDto } from "./dto/job-search-query-create.dto";
-import { JobSearchQueryDto } from "./dto/job-search-query.dto";
+import { UpdateJobSearchQueryDto } from "./dto/update-job-search-query.dto";
 import { JobLiveSearchDto } from "./dto/job-live-search.dto";
 import { JobSearchQueryService } from "./job-search-query.service";
-import { JobSearchService } from "./job-search.service";
+import { JobSearchService, LiveSearchResponse } from "./job-search.service";
 
 @Controller("jobs")
 export class JobSearchController {
@@ -24,13 +25,16 @@ export class JobSearchController {
   ) {}
 
   @Get("search-queries")
-  listQueries(@Req() request: Request) {
+  listQueries(@Req() request: Request): Promise<JobSearchQuery[]> {
     const tenantId = request.tenantId!;
     return this.jobSearchQueryService.listForTenant(tenantId);
   }
 
   @Post("search-queries")
-  createQuery(@Req() request: Request, @Body() dto: JobSearchQueryCreateDto) {
+  createQuery(
+    @Req() request: Request,
+    @Body() dto: JobSearchQueryCreateDto
+  ): Promise<JobSearchQuery> {
     const tenantId = request.tenantId!;
     return this.jobSearchQueryService.createForTenant(tenantId, dto);
   }
@@ -39,8 +43,8 @@ export class JobSearchController {
   async updateQuery(
     @Req() request: Request,
     @Param("id") id: string,
-    @Body() dto: Partial<JobSearchQueryDto>
-  ) {
+    @Body() dto: UpdateJobSearchQueryDto
+  ): Promise<{ ok: true }> {
     const tenantId = request.tenantId!;
     const updated = await this.jobSearchQueryService.updateForTenant(tenantId, id, dto);
 
@@ -52,7 +56,7 @@ export class JobSearchController {
   }
 
   @Delete("search-queries/:id")
-  async deleteQuery(@Req() request: Request, @Param("id") id: string) {
+  async deleteQuery(@Req() request: Request, @Param("id") id: string): Promise<{ ok: true }> {
     const tenantId = request.tenantId!;
     const deleted = await this.jobSearchQueryService.deleteForTenant(tenantId, id);
 
@@ -64,7 +68,7 @@ export class JobSearchController {
   }
 
   @Post("live")
-  liveSearch(@Req() request: Request, @Body() dto: JobLiveSearchDto) {
+  liveSearch(@Req() request: Request, @Body() dto: JobLiveSearchDto): Promise<LiveSearchResponse> {
     const tenantId = request.tenantId!;
     return this.jobSearchService.liveSearch(tenantId, dto);
   }

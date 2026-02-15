@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
+import { JobSearchQuery, PrismaClient } from "@prisma/client";
 import { JobSearchQueryCreateDto } from "./dto/job-search-query-create.dto";
 import { JobSearchQueryDto } from "./dto/job-search-query.dto";
 
@@ -7,7 +7,7 @@ import { JobSearchQueryDto } from "./dto/job-search-query.dto";
 export class JobSearchQueryService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  createForTenant(tenantId: string, dto: JobSearchQueryCreateDto) {
+  createForTenant(tenantId: string, dto: JobSearchQueryCreateDto): Promise<JobSearchQuery> {
     return this.prisma.jobSearchQuery.create({
       data: {
         tenantId,
@@ -22,7 +22,7 @@ export class JobSearchQueryService {
     });
   }
 
-  listForTenant(tenantId: string) {
+  listForTenant(tenantId: string): Promise<JobSearchQuery[]> {
     return this.prisma.jobSearchQuery.findMany({
       where: { tenantId },
       orderBy: { updatedAt: "desc" }

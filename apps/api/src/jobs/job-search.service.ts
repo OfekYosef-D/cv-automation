@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Injectable } from "@nestjs/common";
-import { PrismaClient } from "@prisma/client";
+import { JobSource, PrismaClient } from "@prisma/client";
 import { JobLiveSearchDto } from "./dto/job-live-search.dto";
 
 interface LiveSearchResult {
@@ -8,11 +8,11 @@ interface LiveSearchResult {
   title: string;
   description: string;
   location?: string;
-  url: string;
+  url?: string;
   postedAt?: Date;
 }
 
-interface LiveSearchResponse {
+export interface LiveSearchResponse {
   jobs: Array<{
     externalId: string;
     title: string;
@@ -45,6 +45,11 @@ export class JobSearchService {
 
     for (const job of deduped.values()) {
       const contentHash = this.hashContent(job.title, job.description);
+      const canonicalUrl = job.url ? this.canonicalizeUrl(job.url) : null;
+
+      if (!canonicalUrl) {
+        continue;
+      }
 
       await this.prisma.job.upsert({
         where: {
@@ -60,7 +65,7 @@ export class JobSearchService {
           title: job.title,
           description: job.description,
           location: job.location,
-          url: job.url,
+          url: canonicalUrl,
           postedAt: job.postedAt,
           contentHash
         },
@@ -68,7 +73,7 @@ export class JobSearchService {
           title: job.title,
           description: job.description,
           location: job.location,
-          url: job.url,
+          url: canonicalUrl,
           postedAt: job.postedAt,
           contentHash,
           updatedAt: new Date()
@@ -80,7 +85,7 @@ export class JobSearchService {
         title: job.title,
         description: job.description,
         location: job.location ?? null,
-        url: job.url,
+        url: canonicalUrl,
         postedAt: job.postedAt ? job.postedAt.toISOString() : null,
         contentHash
       });
@@ -93,7 +98,13 @@ export class JobSearchService {
     return crypto.createHash("sha256").update(`${title}::${description}`).digest("hex");
   }
 
-  private async ensureLiveSource(tenantId: string, provider: string) {
+  private canonicalizeUrl(raw: string): string {
+    const url = new URL(raw);
+    url.hash = "";
+    return url.toString();
+  }
+
+  private async ensureLiveSource(tenantId: string, provider: string): Promise<JobSource> {
     const name = `live-${provider}`;
 
     const existing = await this.prisma.jobSource.findFirst({
@@ -118,25 +129,49 @@ export class JobSearchService {
       if (!apiKey) return [];
 
       const params = new URLSearchParams({ query: dto.query, page: "1", num_pages: "1" });
-      const response = await fetch(`https://jsearch.p.rapidapi.com/search?${params.toString()}`, {
-        headers: {
-          "X-RapidAPI-Key": apiKey,
-          "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
-        }
-      });
 
-      if (!response.ok) return [];
-      const payload = (await response.json()) as {
-        data?: Array<{
-          job_id?: string;
-          job_title?: string;
-          job_description?: string;
-          job_city?: string;
-          job_country?: string;
-          job_apply_link?: string;
-          job_posted_at_datetime_utc?: string;
-        }>;
-      };
+      let payload:
+        | {
+            data?: Array<{
+              job_id?: string;
+              job_title?: string;
+              job_description?: string;
+              job_city?: string;
+              job_country?: string;
+              job_apply_link?: string;
+              job_posted_at_datetime_utc?: string;
+            }>;
+          }
+        | undefined;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await fetch(`https://jsearch.p.rapidapi.com/search?${params.toString()}`, {
+          headers: {
+            "X-RapidAPI-Key": apiKey,
+            "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
+          },
+          signal: controller.signal
+        });
+
+        if (!response.ok) return [];
+        payload = (await response.json()) as {
+          data?: Array<{
+            job_id?: string;
+            job_title?: string;
+            job_description?: string;
+            job_city?: string;
+            job_country?: string;
+            job_apply_link?: string;
+            job_posted_at_datetime_utc?: string;
+          }>;
+        };
+      } catch {
+        return [];
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       return (payload.data ?? [])
         .filter((job) => job.job_id && job.job_title && job.job_apply_link)
@@ -163,19 +198,42 @@ export class JobSearchService {
       });
       if (dto.location) params.set("location", dto.location);
 
-      const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`);
-      if (!response.ok) return [];
+      let payload:
+        | {
+            jobs_results?: Array<{
+              job_id?: string;
+              title?: string;
+              description?: string;
+              location?: string;
+              apply_options?: Array<{ link?: string }>;
+              related_links?: Array<{ link?: string }>;
+            }>;
+          }
+        | undefined;
 
-      const payload = (await response.json()) as {
-        jobs_results?: Array<{
-          job_id?: string;
-          title?: string;
-          description?: string;
-          location?: string;
-          apply_options?: Array<{ link?: string }>;
-          related_links?: Array<{ link?: string }>;
-        }>;
-      };
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
+          signal: controller.signal
+        });
+        if (!response.ok) return [];
+
+        payload = (await response.json()) as {
+          jobs_results?: Array<{
+            job_id?: string;
+            title?: string;
+            description?: string;
+            location?: string;
+            apply_options?: Array<{ link?: string }>;
+            related_links?: Array<{ link?: string }>;
+          }>;
+        };
+      } catch {
+        return [];
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       return (payload.jobs_results ?? [])
         .filter((job) => job.job_id && job.title)
