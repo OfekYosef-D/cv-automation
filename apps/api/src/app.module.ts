@@ -12,6 +12,7 @@ import { ApprovalsController } from "./approvals/approvals.controller";
 import { ApprovalsService } from "./approvals/approvals.service";
 import { JobsController } from "./jobs/jobs.controller";
 import { JobsService } from "./jobs/jobs.service";
+import { JobSearchQueryService } from "./jobs/job-search-query.service";
 import { ProfileController } from "./profile/profile.controller";
 import { ProfileService } from "./profile/profile.service";
 
@@ -26,7 +27,14 @@ import { ProfileService } from "./profile/profile.service";
     JobsController,
     ProfileController
   ],
-  providers: [ArtefactsService, MatchingService, ApprovalsService, JobsService, ProfileService]
+  providers: [
+    ArtefactsService,
+    MatchingService,
+    ApprovalsService,
+    JobsService,
+    JobSearchQueryService,
+    ProfileService
+  ]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
