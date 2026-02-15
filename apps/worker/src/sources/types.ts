@@ -22,6 +22,7 @@ export type SourceType =
   | "lever"
   | "remoteok"
   | "remotive"
+  | "serpapi"
   | "jsearch"
   | "adzuna"
   | "manual";
@@ -31,6 +32,8 @@ export type SourceType =
  * Different source types use different config fields.
  */
 export interface SourceConfig {
+  /** Search query for live provider APIs */
+  query?: string;
   /** Board URL for Greenhouse/Lever sources */
   boardUrl?: string;
   /** Company name for identification */

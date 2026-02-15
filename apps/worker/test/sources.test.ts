@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   isJuniorRole,
   isDeveloperRole,
@@ -8,6 +8,12 @@ import {
 import { GreenhouseAdapter } from "../src/sources/greenhouse-adapter";
 import { RemoteOKAdapter } from "../src/sources/remoteok-adapter";
 import { RemotiveAdapter } from "../src/sources/remotive-adapter";
+import { JSearchAdapter } from "../src/sources/jsearch-adapter";
+import { SerpApiAdapter } from "../src/sources/serpapi-adapter";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("Source Types", () => {
   describe("isJuniorRole", () => {
@@ -127,6 +133,85 @@ describe("Adapters", () => {
 
     it("validates config always passes", () => {
       expect(adapter.validateConfig({})).toBe(true);
+    });
+  });
+
+  describe("JSearchAdapter", () => {
+    const adapter = new JSearchAdapter();
+
+    it("has correct type and name", () => {
+      expect(adapter.type).toBe("jsearch");
+      expect(adapter.name).toBe("JSearch");
+    });
+
+    it("requires apiKey and query", () => {
+      expect(adapter.validateConfig({})).toBe("apiKey is required for JSearch source");
+      expect(adapter.validateConfig({ apiKey: "key" })).toBe("query is required for JSearch source");
+      expect(adapter.validateConfig({ apiKey: "key", query: "junior developer" })).toBe(true);
+    });
+
+    it("normalizes fetched jobs", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            data: [
+              {
+                job_id: "abc",
+                job_title: "Junior Developer",
+                job_description: "Build things",
+                job_city: "Tel Aviv",
+                job_country: "IL",
+                job_apply_link: "https://example.com/job",
+                employer_name: "Acme"
+              }
+            ]
+          })
+        })
+      );
+
+      const result = await adapter.fetch({ apiKey: "key", query: "junior developer" });
+
+      expect(result.jobs).toHaveLength(1);
+      expect(result.jobs[0].externalId).toBe("js-abc");
+      expect(result.jobs[0].title).toBe("Junior Developer");
+    });
+  });
+
+  describe("SerpApiAdapter", () => {
+    const adapter = new SerpApiAdapter();
+
+    it("requires apiKey and query", () => {
+      expect(adapter.validateConfig({})).toBe("apiKey is required for SerpAPI source");
+      expect(adapter.validateConfig({ apiKey: "key" })).toBe("query is required for SerpAPI source");
+      expect(adapter.validateConfig({ apiKey: "key", query: "junior developer" })).toBe(true);
+    });
+
+    it("normalizes fetched jobs", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({
+            jobs_results: [
+              {
+                job_id: "xyz",
+                title: "Junior Software Engineer",
+                description: "Entry role",
+                location: "Israel",
+                apply_options: [{ link: "https://example.com/serp-job" }]
+              }
+            ]
+          })
+        })
+      );
+
+      const result = await adapter.fetch({ apiKey: "key", query: "junior engineer" });
+
+      expect(result.jobs).toHaveLength(1);
+      expect(result.jobs[0].externalId).toBe("serp-xyz");
+      expect(result.jobs[0].url).toBe("https://example.com/serp-job");
     });
   });
 });

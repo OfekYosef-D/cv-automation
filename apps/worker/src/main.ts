@@ -4,10 +4,14 @@ import {
   createIngestionQueue,
   createIngestionWorker,
   processIngestionJob,
-  type IngestionJobData
+  processSearchPollJob,
+  scheduleSearchQueriesFromDb,
+  type IngestionJobData,
+  createSearchWorker
 } from "./queue";
 
-let worker: Worker | undefined;
+let ingestionWorker: Worker | undefined;
+let searchWorker: Worker | undefined;
 
 /**
  * Graceful shutdown handling.
@@ -21,9 +25,14 @@ async function shutdown(signal: string): Promise<void> {
   console.log(`\n[Worker] Received ${signal}, shutting down gracefully...`);
 
   try {
-    if (worker) {
-      await worker.close();
-      console.log("[Worker] BullMQ worker closed");
+    if (ingestionWorker) {
+      await ingestionWorker.close();
+      console.log("[Worker] Ingestion worker closed");
+    }
+
+    if (searchWorker) {
+      await searchWorker.close();
+      console.log("[Worker] Search poll worker closed");
     }
   } catch (err) {
     console.error("[Worker] Error closing worker:", err);
@@ -108,22 +117,38 @@ async function main(): Promise<void> {
 
   // Schedule repeatable jobs for all sources
   await scheduleRepeatableJobs();
+  await scheduleSearchQueriesFromDb();
 
   // Create and start the worker
-  worker = createIngestionWorker(processIngestionJob);
+  ingestionWorker = createIngestionWorker(processIngestionJob);
+  searchWorker = createSearchWorker(processSearchPollJob);
 
-  worker.on("completed", (job, result) => {
+  ingestionWorker.on("completed", (job, result) => {
     console.log(
       `[Worker] Job ${job.id} completed: ${result.processedCount} jobs processed`
     );
   });
 
-  worker.on("failed", (job, error) => {
+  ingestionWorker.on("failed", (job, error) => {
     console.error(`[Worker] Job ${job?.id} failed:`, error.message);
   });
 
-  worker.on("error", (error) => {
+  ingestionWorker.on("error", (error) => {
     console.error("[Worker] Worker error:", error);
+  });
+
+  searchWorker.on("completed", (job, result) => {
+    console.log(
+      `[SearchPoll] Job ${job.id} completed: ${result.processedCount}/${result.fetchedCount}`
+    );
+  });
+
+  searchWorker.on("failed", (job, error) => {
+    console.error(`[SearchPoll] Job ${job?.id} failed:`, error.message);
+  });
+
+  searchWorker.on("error", (error) => {
+    console.error("[SearchPoll] Worker error:", error);
   });
 
   console.log("[Worker] Worker started and listening for jobs...");
