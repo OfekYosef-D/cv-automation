@@ -36,6 +36,7 @@ model Tenant {
   approvals    Approval[]
   consentLogs  ConsentLog[]
   userProfile  UserProfile?
+  jobSearchQueries JobSearchQuery[]
 }
 
 enum AuthProvider {
@@ -174,6 +175,23 @@ model UserProfile {
   seniority      String
   location       String
   mustHaveSkills String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model JobSearchQuery {
+  id             String   @id @default(cuid())
+  tenantId       String
+  provider       String
+  query          String
+  location       String?
+  seniority      String?
+  keywords       String[]
+  cadenceSeconds Int      @default(120)
+  enabled        Boolean  @default(true)
+  lastRunAt      DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
