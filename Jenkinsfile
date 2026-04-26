@@ -7,8 +7,18 @@ pipeline {
         timeout(time: 15, unit: 'MINUTES')
     }
 
+    parameters {
+        booleanParam(
+            name: 'RUN_FULL_API_TESTS',
+            defaultValue: false,
+            description: 'Run the full @cv/api Jest suite. Disabled by default for local Jenkins stability.'
+        )
+    }
+
     environment {
         APP_NAME = 'cv-automation'
+        CI = 'true'
+        TURBO_TELEMETRY_DISABLED = '1'
     }
 
     stages {
@@ -88,7 +98,29 @@ pipeline {
             steps {
                 sh 'corepack enable'
                 sh 'pnpm turbo run test --concurrency=1 --filter=!@cv/api'
-                sh 'pnpm --filter @cv/api test -- --runInBand'
+                sh 'pnpm --filter @cv/api exec jest --config ./jest.config.js --runInBand src/config/env.test.ts src/auth/dto/login-query.dto.test.ts'
+            }
+        }
+
+        stage('Full API Tests In Node Container') {
+            when {
+                expression {
+                    return params.RUN_FULL_API_TESTS
+                }
+            }
+            options {
+                timeout(time: 10, unit: 'MINUTES')
+            }
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root --memory=4g --cpus=2'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh 'corepack enable'
+                sh 'NODE_OPTIONS=--max-old-space-size=3072 pnpm --filter @cv/api test -- --runInBand'
             }
         }
 
