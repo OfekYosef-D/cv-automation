@@ -4,6 +4,7 @@ pipeline {
     options {
         timestamps()
         buildDiscarder(logRotator(numToKeepStr: '10'))
+        timeout(time: 15, unit: 'MINUTES')
     }
 
     environment {
@@ -45,49 +46,45 @@ pipeline {
             }
         }
 
-        stage('Quality Gates In Node Container') {
-            parallel {
-                stage('Lint') {
-                    agent {
-                        docker {
-                            image 'node:20-bookworm'
-                            args '-u root:root'
-                            reuseNode true
-                        }
-                    }
-                    steps {
-                        sh 'corepack enable'
-                        sh 'pnpm lint'
-                    }
+        stage('Lint In Node Container') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root'
+                    reuseNode true
                 }
+            }
+            steps {
+                sh 'corepack enable'
+                sh 'pnpm lint'
+            }
+        }
 
-                stage('Typecheck') {
-                    agent {
-                        docker {
-                            image 'node:20-bookworm'
-                            args '-u root:root'
-                            reuseNode true
-                        }
-                    }
-                    steps {
-                        sh 'corepack enable'
-                        sh 'pnpm typecheck'
-                    }
+        stage('Typecheck In Node Container') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root'
+                    reuseNode true
                 }
+            }
+            steps {
+                sh 'corepack enable'
+                sh 'pnpm typecheck'
+            }
+        }
 
-                stage('Test') {
-                    agent {
-                        docker {
-                            image 'node:20-bookworm'
-                            args '-u root:root'
-                            reuseNode true
-                        }
-                    }
-                    steps {
-                        sh 'corepack enable'
-                        sh 'pnpm test'
-                    }
+        stage('Test In Node Container') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root'
+                    reuseNode true
                 }
+            }
+            steps {
+                sh 'corepack enable'
+                sh 'pnpm turbo run test --concurrency=1'
             }
         }
 
