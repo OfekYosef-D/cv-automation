@@ -200,22 +200,30 @@ async function main() {
   // Create a CV and CV version for artefacts
   const cv = await prisma.cv.upsert({
     where: { id: "cv-1" },
-    update: {},
+    update: {
+      isDefault: true
+    },
     create: {
       id: "cv-1",
       tenantId: tenant.id,
-      title: "My CV"
+      title: "My CV",
+      isDefault: true
     }
   });
 
   const cvVersion = await prisma.cvVersion.upsert({
     where: { id: "cv-version-1" },
-    update: {},
+    update: {
+      kind: "BASE",
+      label: "Seed Base CV"
+    },
     create: {
       id: "cv-version-1",
       tenantId: tenant.id,
       cvId: cv.id,
-      content: "Full CV content here..."
+      content: "Full CV content here...",
+      kind: "BASE",
+      label: "Seed Base CV"
     }
   });
 

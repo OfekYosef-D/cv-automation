@@ -8,8 +8,13 @@ type ArtefactStatus = "DRAFT" | "APPROVED" | "REJECTED";
 // Inline types to avoid Prisma version-specific exports
 interface JobArtefact {
   id: string;
+  cvVersionId: string;
   status: ArtefactStatus;
   content: string;
+  cvVersion?: {
+    externalDocumentUrl: string | null;
+    externalDocumentTitle: string | null;
+  };
 }
 
 interface JobApproval {
@@ -19,6 +24,10 @@ interface JobApproval {
 interface JobWithRelations {
   id: string;
   title: string;
+  company: string | null;
+  salary: string | null;
+  tags: string[];
+  metadata: unknown;
   location: string | null;
   postedAt: Date | null;
   artefacts: JobArtefact[];
@@ -27,6 +36,32 @@ interface JobWithRelations {
 
 interface MappedJob {
   approvalStatus: ApprovalStatus;
+}
+
+function extractDiscoveryMetadata(metadata: unknown): {
+  origin: "all" | "linkedin";
+  sourceLabel: string | null;
+  matchedQueryIds: string[];
+} {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return { origin: "all", sourceLabel: null, matchedQueryIds: [] };
+  }
+
+  const discovery =
+    "discovery" in metadata &&
+    metadata.discovery &&
+    typeof metadata.discovery === "object" &&
+    !Array.isArray(metadata.discovery)
+      ? (metadata.discovery as Record<string, unknown>)
+      : null;
+
+  const origin = discovery?.origin === "linkedin" ? "linkedin" : "all";
+  const sourceLabel = typeof discovery?.sourceLabel === "string" ? discovery.sourceLabel : null;
+  const matchedQueryIds = Array.isArray(discovery?.matchedQueryIds)
+    ? discovery.matchedQueryIds.filter((value): value is string => typeof value === "string")
+    : [];
+
+  return { origin, sourceLabel, matchedQueryIds };
 }
 
 @Injectable()
@@ -41,7 +76,11 @@ export class JobsService {
       where: { tenantId },
       orderBy: { seenAt: "desc" },
       include: {
-        artefacts: { orderBy: { createdAt: "desc" }, take: 1 },
+        artefacts: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: { cvVersion: true }
+        },
         approvals: { orderBy: { createdAt: "desc" }, take: 1 }
       }
     });
@@ -50,13 +89,20 @@ export class JobsService {
     const mapped = (jobs as unknown as JobWithRelations[]).map((job: JobWithRelations) => ({
       id: job.id,
       title: job.title,
+      company: job.company,
+      salary: job.salary,
+      tags: job.tags,
+      ...extractDiscoveryMetadata(job.metadata),
       location: job.location,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       latestArtefact: job.artefacts[0]
         ? {
             id: job.artefacts[0].id,
+            cvVersionId: job.artefacts[0].cvVersionId,
             status: job.artefacts[0].status,
-            content: job.artefacts[0].content
+            content: job.artefacts[0].content,
+            documentUrl: job.artefacts[0].cvVersion?.externalDocumentUrl ?? null,
+            documentTitle: job.artefacts[0].cvVersion?.externalDocumentTitle ?? null
           }
         : null,
       approvalStatus: (job.approvals[0]?.status ?? "PENDING") as ApprovalStatus
@@ -77,7 +123,12 @@ export class JobsService {
   async getJob(tenantId: string, jobId: string): Promise<JobDetailDto | null> {
     const job = await prisma.job.findFirst({
       where: { id: jobId, tenantId },
-      include: { artefacts: { orderBy: { createdAt: "desc" } } }
+      include: {
+        artefacts: {
+          orderBy: { createdAt: "desc" },
+          include: { cvVersion: true }
+        }
+      }
     });
 
     if (!job) {
@@ -88,13 +139,20 @@ export class JobsService {
       id: job.id,
       title: job.title,
       description: job.description,
+      company: job.company,
+      salary: job.salary,
+      tags: job.tags,
+      ...extractDiscoveryMetadata(job.metadata),
       location: job.location,
       url: job.url,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       artefacts: (job.artefacts as unknown as JobArtefact[]).map((artefact: JobArtefact) => ({
         id: artefact.id,
+        cvVersionId: artefact.cvVersionId,
         status: artefact.status,
-        content: artefact.content
+        content: artefact.content,
+        documentUrl: artefact.cvVersion?.externalDocumentUrl ?? null,
+        documentTitle: artefact.cvVersion?.externalDocumentTitle ?? null
       }))
     };
   }

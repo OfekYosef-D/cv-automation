@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback, type ReactElement } from "react";
 import { ApiError, getJobDetail, getMatchScore } from "@/lib/api";
-import type { JobDetailResponse, Artefact, ApprovalStatus } from "@/lib/types";
+import type {
+  ApprovalStatus,
+  Artefact,
+  CvTemplate,
+  GeneratedCvDraft,
+  JobDetailResponse
+} from "@/lib/types";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
@@ -18,6 +24,18 @@ interface JobDetailPanelProps {
   onSnooze: () => void;
   isPending: boolean;
   actionError: string | null;
+  profileConfigured?: boolean;
+  template?: CvTemplate | null;
+  generatedDraft?: GeneratedCvDraft | null;
+  onGenerateDraft?: () => void;
+  onDraftFieldChange?: (token: string, value: string) => void;
+  onSaveDraft?: () => void;
+  onSyncDraft?: () => void;
+  isGeneratingDraft?: boolean;
+  isSavingDraft?: boolean;
+  isSyncingDraft?: boolean;
+  draftError?: string | null;
+  draftSuccess?: string | null;
 }
 
 function formatDate(dateString: string | null): string {
@@ -30,10 +48,44 @@ function formatDate(dateString: string | null): string {
   });
 }
 
-/**
- * Strip HTML tags and decode entities from text.
- * Defensive measure for descriptions that may contain HTML.
- */
+function formatDateTime(dateString: string | null): string {
+  if (!dateString) return "Unknown";
+  return new Date(dateString).toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  });
+}
+
+function humanizeToken(token: string): string {
+  return token
+    .toLowerCase()
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function getEditableDraftTokens(template: CvTemplate | null): string[] {
+  if (!template) {
+    return [];
+  }
+
+  const generatedPlaceholders = template.placeholders.filter(
+    (placeholder) =>
+      placeholder.bindingType === "GENERATED" || placeholder.bindingType === "CUSTOM"
+  );
+  const summaryPlaceholders = generatedPlaceholders.filter(
+    (placeholder) =>
+      placeholder.bindingType === "GENERATED" && placeholder.sourceKey === "summary"
+  );
+
+  return (summaryPlaceholders.length > 0 ? summaryPlaceholders : generatedPlaceholders).map(
+    (placeholder) => placeholder.token
+  );
+}
+
 function stripHtml(html: string): string {
   return html
     .replace(/<[^>]*>/g, " ")
@@ -53,7 +105,6 @@ function JobDetailSkeleton() {
       className="space-y-6 animate-in fade-in duration-300"
       data-testid="job-detail-skeleton"
     >
-      {/* Header skeleton */}
       <div className="space-y-3">
         <div className="flex gap-2">
           <Skeleton className="h-5 w-20" />
@@ -66,7 +117,6 @@ function JobDetailSkeleton() {
 
       <Separator />
 
-      {/* Match score skeleton */}
       <div className="space-y-3">
         <Skeleton className="h-5 w-24" />
         <MatchScoreSkeleton />
@@ -74,22 +124,9 @@ function JobDetailSkeleton() {
 
       <Separator />
 
-      {/* Description skeleton */}
       <div className="space-y-2">
         <Skeleton className="h-5 w-24" />
         <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-5/6" />
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-3/4" />
-      </div>
-
-      <Separator />
-
-      {/* Artefact skeleton */}
-      <div className="space-y-2">
-        <Skeleton className="h-5 w-32" />
         <Skeleton className="h-4 w-full" />
         <Skeleton className="h-4 w-5/6" />
       </div>
@@ -167,95 +204,109 @@ export function JobDetailPanel({
   onReject,
   onSnooze,
   isPending,
-  actionError
+  actionError,
+  profileConfigured = true,
+  template = null,
+  generatedDraft = null,
+  onGenerateDraft = () => undefined,
+  onDraftFieldChange = () => undefined,
+  onSaveDraft = () => undefined,
+  onSyncDraft = () => undefined,
+  isGeneratingDraft = false,
+  isSavingDraft = false,
+  isSyncingDraft = false,
+  draftError = null,
+  draftSuccess = null
 }: JobDetailPanelProps): ReactElement {
   const [jobDetail, setJobDetail] = useState<JobDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-
-  // Match score state
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [matchExplanations, setMatchExplanations] = useState<string[]>([]);
   const [matchLoading, setMatchLoading] = useState(false);
   const [matchError, setMatchError] = useState<string | null>(null);
-  const [noProfile, setNoProfile] = useState(false);
-
-  // Request ID guard to prevent race conditions
+  const [noProfile, setNoProfile] = useState(!profileConfigured);
   const requestIdRef = useRef(0);
 
-  const fetchJobDetail = useCallback(async (id: string) => {
-    const currentRequestId = ++requestIdRef.current;
+  const fetchJobDetail = useCallback(
+    async (id: string) => {
+      const currentRequestId = ++requestIdRef.current;
 
-    setIsLoading(true);
-    setFetchError(null);
-    setMatchLoading(true);
-    setMatchError(null);
-    setNoProfile(false);
-    setMatchScore(null);
-    setMatchExplanations([]);
+      setIsLoading(true);
+      setFetchError(null);
+      setMatchLoading(profileConfigured);
+      setMatchError(null);
+      setNoProfile(!profileConfigured);
+      setMatchScore(null);
+      setMatchExplanations([]);
 
-    try {
-      // Fetch job detail and match score in parallel
-      const [detail, scoreResult] = await Promise.allSettled([
-        getJobDetail(id),
-        getMatchScore(id)
-      ]);
+      try {
+        const detailPromise = getJobDetail(id);
 
-      // Only update state if this is still the latest request
-      if (currentRequestId === requestIdRef.current) {
-        // Handle job detail result
+        if (!profileConfigured) {
+          const detail = await detailPromise;
+          if (currentRequestId === requestIdRef.current) {
+            setJobDetail(detail);
+          }
+          return;
+        }
+
+        const [detail, scoreResult] = await Promise.allSettled([
+          detailPromise,
+          getMatchScore(id)
+        ]);
+
+        if (currentRequestId !== requestIdRef.current) {
+          return;
+        }
+
         if (detail.status === "fulfilled") {
           setJobDetail(detail.value);
         } else {
           setFetchError("Failed to load job details");
         }
 
-        // Handle match score result
         if (scoreResult.status === "fulfilled") {
           setMatchScore(scoreResult.value.score);
           setMatchExplanations(scoreResult.value.explanations);
+        } else if (
+          scoreResult.reason instanceof ApiError &&
+          scoreResult.reason.status === 400
+        ) {
+          setNoProfile(true);
         } else {
-          // Check if it's a 400 error (no profile configured)
-          if (
-            scoreResult.reason instanceof ApiError &&
-            scoreResult.reason.status === 400
-          ) {
-            setNoProfile(true);
-          } else {
-            setMatchError("Failed to load match score");
-          }
+          setMatchError("Failed to load match score");
+        }
+      } catch {
+        if (currentRequestId === requestIdRef.current) {
+          setFetchError("Failed to load job details");
+        }
+      } finally {
+        if (currentRequestId === requestIdRef.current) {
+          setIsLoading(false);
+          setMatchLoading(false);
         }
       }
-    } catch {
-      if (currentRequestId === requestIdRef.current) {
-        setFetchError("Failed to load job details");
-      }
-    } finally {
-      if (currentRequestId === requestIdRef.current) {
-        setIsLoading(false);
-        setMatchLoading(false);
-      }
-    }
-  }, []);
+    },
+    [profileConfigured]
+  );
 
   useEffect(() => {
     if (jobId) {
-      fetchJobDetail(jobId);
+      void fetchJobDetail(jobId);
     } else {
       setJobDetail(null);
       setMatchScore(null);
       setMatchExplanations([]);
       setMatchError(null);
-      setNoProfile(false);
+      setNoProfile(!profileConfigured);
     }
 
     return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally incrementing ref to cancel stale requests
       requestIdRef.current++;
     };
-  }, [jobId, fetchJobDetail]);
+  }, [jobId, fetchJobDetail, profileConfigured]);
 
-  // No job selected
   if (!jobId) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -264,24 +315,26 @@ export function JobDetailPanel({
     );
   }
 
-  // Loading state
   if (isLoading) {
     return <JobDetailSkeleton />;
   }
 
-  // Error state
   if (fetchError) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-4">
         <p className="text-destructive">{fetchError}</p>
-        <Button variant="outline" onClick={() => fetchJobDetail(jobId)}>
+        <Button
+          variant="outline"
+          onClick={() => {
+            void fetchJobDetail(jobId);
+          }}
+        >
           Retry
         </Button>
       </div>
     );
   }
 
-  // No detail loaded
   if (!jobDetail) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
@@ -292,19 +345,50 @@ export function JobDetailPanel({
 
   const latestArtefact: Artefact | null = jobDetail.artefacts[0] ?? null;
   const actionsDisabled = isPending;
+  const selectedDraft = generatedDraft?.jobId === jobId ? generatedDraft : null;
+  const editableDraftTokens = new Set(getEditableDraftTokens(template));
+  const editableDraftFields = selectedDraft
+    ? Object.entries(selectedDraft.fieldValues).filter(([token]) => editableDraftTokens.has(token))
+    : [];
+  const latestSummary =
+    selectedDraft?.fieldValues.SUMMARY ??
+    selectedDraft?.fieldValues.HEADLINE ??
+    latestArtefact?.content ??
+    null;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header Section */}
       <div className="space-y-3">
-        {/* Badges */}
         <div className="flex flex-wrap gap-2">
+          {jobDetail.company && (
+            <Badge className="border border-slate-200 bg-white text-slate-700">
+              {jobDetail.company}
+            </Badge>
+          )}
           {jobDetail.location && (
             <Badge className="flex items-center gap-1 bg-slate-100 text-slate-700">
               <MapPinIcon className="opacity-70" />
               {jobDetail.location}
             </Badge>
           )}
+          {jobDetail.salary && (
+            <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700">
+              {jobDetail.salary}
+            </Badge>
+          )}
+          <Badge className="border border-slate-200 bg-white text-slate-700">
+            {jobDetail.origin === "linkedin" ? "LinkedIn" : "All sources"}
+          </Badge>
+          {jobDetail.sourceLabel ? (
+            <Badge className="border border-slate-200 bg-white text-slate-700">
+              {jobDetail.sourceLabel}
+            </Badge>
+          ) : null}
+          {jobDetail.matchedQueryIds.length > 0 ? (
+            <Badge className="border border-slate-200 bg-white text-slate-700">
+              {jobDetail.matchedQueryIds.length} matched
+            </Badge>
+          ) : null}
           <Badge
             className={cn(
               "border",
@@ -318,12 +402,8 @@ export function JobDetailPanel({
           </Badge>
         </div>
 
-        {/* Title */}
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {jobDetail.title}
-        </h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{jobDetail.title}</h2>
 
-        {/* Posted Date */}
         {jobDetail.postedAt && (
           <p className="text-sm text-muted-foreground flex items-center gap-1.5">
             <CalendarIcon className="opacity-70" />
@@ -331,7 +411,6 @@ export function JobDetailPanel({
           </p>
         )}
 
-        {/* Apply Button */}
         <div className="pt-2">
           <a
             href={jobDetail.url}
@@ -347,7 +426,6 @@ export function JobDetailPanel({
 
       <Separator />
 
-      {/* Match Score Section */}
       <MatchScoreDisplay
         score={matchScore}
         explanations={matchExplanations}
@@ -358,11 +436,22 @@ export function JobDetailPanel({
 
       <Separator />
 
-      {/* Description Section */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Description
         </h3>
+        {jobDetail.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {jobDetail.tags.map((tag) => (
+              <Badge
+                key={tag}
+                className="border-slate-200 bg-slate-50 text-slate-600"
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
         <div className="max-h-[300px] overflow-y-auto pr-2">
           <p className="text-sm leading-relaxed whitespace-pre-wrap">
             {jobDetail.description ? stripHtml(jobDetail.description) : "No description available"}
@@ -372,30 +461,127 @@ export function JobDetailPanel({
 
       <Separator />
 
-      {/* AI Summary Section */}
       <div className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           AI-Generated Summary
         </h3>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {latestArtefact?.content ?? "No AI summary generated yet"}
+          {latestSummary ?? "No AI summary generated yet"}
         </p>
       </div>
 
       <Separator />
 
-      {/* Action Buttons */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Tailored CV Draft
+        </h3>
+        {!template ? (
+          <p className="text-sm text-muted-foreground">
+            Connect Google and attach a placeholder-based CV template to generate a tailored draft.
+          </p>
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-slate-900">
+                Template: {template.documentTitle ?? template.title}
+              </p>
+              <p className="text-xs text-slate-600">
+                Latest template sync: {formatDateTime(template.lastSyncedAt)}
+              </p>
+            </div>
+
+            {!selectedDraft ? (
+              <>
+                <p className="text-sm text-slate-600">
+                  Generate an in-app draft first. Only the summary gets rewritten so the rest of
+                  your base CV stays untouched before you sync a copied Google Doc.
+                </p>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={onGenerateDraft}
+                  disabled={isGeneratingDraft}
+                >
+                  {isGeneratingDraft ? "Generating..." : "Generate Draft"}
+                </Button>
+              </>
+            ) : (
+              <>
+                {editableDraftFields.length === 0 ? (
+                  <p className="text-sm text-slate-600">
+                    This template does not expose a summary placeholder to edit in app.
+                  </p>
+                ) : (
+                  <div className="grid gap-3">
+                    {editableDraftFields.map(([token, value]) => (
+                      <label key={token} className="grid gap-1 text-sm">
+                        <span className="font-medium text-slate-800">{humanizeToken(token)}</span>
+                        <textarea
+                          aria-label={humanizeToken(token)}
+                          value={value}
+                          onChange={(event) => onDraftFieldChange(token, event.target.value)}
+                          className="min-h-24 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onSaveDraft}
+                    disabled={isSavingDraft}
+                  >
+                    {isSavingDraft ? "Saving..." : "Save Draft"}
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={onSyncDraft}
+                    disabled={isSyncingDraft}
+                  >
+                    {isSyncingDraft ? "Syncing..." : "Sync to Google Doc"}
+                  </Button>
+                  {selectedDraft.copiedDocumentUrl ? (
+                    <a
+                      href={selectedDraft.copiedDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-sm font-medium text-slate-900 underline underline-offset-4"
+                    >
+                      Open Synced CV
+                    </a>
+                  ) : null}
+                </div>
+                <p className="text-xs text-slate-600">
+                  Sync status: {selectedDraft.syncStatus}. Placeholder replacement preserves the
+                  original template layout and styling.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+        {draftSuccess ? (
+          <p className="text-sm text-emerald-700" role="status">
+            {draftSuccess}
+          </p>
+        ) : null}
+        {draftError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {draftError}
+          </p>
+        ) : null}
+      </div>
+
+      <Separator />
+
       <div className="space-y-3">
         <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
           Decision
         </h3>
         <div className="flex gap-3">
-          <Button
-            type="button"
-            disabled={actionsDisabled}
-            onClick={onApprove}
-            className="flex-1"
-          >
+          <Button type="button" disabled={actionsDisabled} onClick={onApprove} className="flex-1">
             Approve
           </Button>
           <Button

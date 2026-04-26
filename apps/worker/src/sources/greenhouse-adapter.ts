@@ -190,7 +190,10 @@ export class GreenhouseAdapter implements JobSourceAdapter {
       url: job.absolute_url,
       postedAt: job.updated_at ? new Date(job.updated_at) : undefined,
       company: companyName || boardToken,
-      tags: job.departments?.map((d) => d.name)
+      tags: job.departments?.map((d) => d.name),
+      metadata: {
+        departments: job.departments?.map((department) => department.name) ?? []
+      }
     }));
   }
 

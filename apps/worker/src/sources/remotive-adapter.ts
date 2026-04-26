@@ -168,7 +168,12 @@ export class RemotiveAdapter implements JobSourceAdapter {
         : undefined,
       company: job.company_name,
       salary: job.salary || undefined,
-      tags: [...(job.tags || []), job.category, job.job_type].filter(Boolean)
+      tags: [...(job.tags || []), job.category, job.job_type].filter(Boolean),
+      metadata: {
+        category: job.category,
+        jobType: job.job_type,
+        companyLogo: job.company_logo ?? null
+      }
     }));
   }
 

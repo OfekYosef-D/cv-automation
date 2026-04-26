@@ -11,4 +11,15 @@ describe("JobSearchQueryCreateDto validation", () => {
 
     expect(errors.length).toBeGreaterThan(0);
   });
+
+  it("rejects cadences below 60 seconds", async () => {
+    const dto = new JobSearchQueryCreateDto();
+    dto.provider = "serpapi";
+    dto.query = "software engineer";
+    dto.cadenceSeconds = 30;
+
+    const errors = await validate(dto);
+
+    expect(errors.length).toBeGreaterThan(0);
+  });
 });

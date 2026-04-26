@@ -53,6 +53,16 @@ describe("Jobs (e2e)", () => {
         externalId: "job-1",
         title: "Fullstack Developer",
         description: "Build web apps",
+        company: "Acme",
+        salary: "$90,000 - $110,000",
+        tags: ["react", "nestjs"],
+        metadata: {
+          discovery: {
+            origin: "linkedin",
+            sourceLabel: "SerpApi",
+            matchedQueryIds: ["query-1"]
+          }
+        },
         location: "Remote",
         url: "https://example.com/job-1",
         contentHash: "hash-1",
@@ -89,6 +99,12 @@ describe("Jobs (e2e)", () => {
     expect(response.body.jobs).toHaveLength(1);
     expect(response.body.jobs[0].id).toBe(job.id);
     expect(response.body.jobs[0].title).toBe("Fullstack Developer");
+    expect(response.body.jobs[0].company).toBe("Acme");
+    expect(response.body.jobs[0].salary).toBe("$90,000 - $110,000");
+    expect(response.body.jobs[0].tags).toEqual(["react", "nestjs"]);
+    expect(response.body.jobs[0].origin).toBe("linkedin");
+    expect(response.body.jobs[0].sourceLabel).toBe("SerpApi");
+    expect(response.body.jobs[0].matchedQueryIds).toEqual(["query-1"]);
     expect(response.body.jobs[0].latestArtefact?.content).toBe("Tailored summary");
     expect(response.body.jobs[0].approvalStatus).toBe("PENDING");
     expect(response.body.page).toBe(1);
@@ -151,6 +167,16 @@ describe("Jobs (e2e)", () => {
         externalId: "job-3",
         title: "Data Engineer",
         description: "Build pipelines",
+        company: "Gamma Labs",
+        salary: "$100,000+",
+        tags: ["python", "etl"],
+        metadata: {
+          discovery: {
+            origin: "linkedin",
+            sourceLabel: "SerpApi",
+            matchedQueryIds: ["query-2", "query-3"]
+          }
+        },
         location: "Hybrid",
         url: "https://example.com/job-3",
         contentHash: "hash-3"
@@ -184,6 +210,12 @@ describe("Jobs (e2e)", () => {
       .expect(200);
 
     expect(response.body.id).toBe(job.id);
+    expect(response.body.company).toBe("Gamma Labs");
+    expect(response.body.salary).toBe("$100,000+");
+    expect(response.body.tags).toEqual(["python", "etl"]);
+    expect(response.body.origin).toBe("linkedin");
+    expect(response.body.sourceLabel).toBe("SerpApi");
+    expect(response.body.matchedQueryIds).toEqual(["query-2", "query-3"]);
     expect(response.body.artefacts).toHaveLength(1);
     expect(response.body.artefacts[0].content).toBe("Pipeline summary");
   });

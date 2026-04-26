@@ -12,6 +12,7 @@ export interface NormalizedJob {
   company?: string;
   salary?: string;
   tags?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 /**

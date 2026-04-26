@@ -124,7 +124,11 @@ export class RemoteOKAdapter implements JobSourceAdapter {
       postedAt: job.date ? new Date(job.date) : undefined,
       company: job.company,
       salary: this.formatSalary(job.salary_min, job.salary_max),
-      tags: job.tags
+      tags: job.tags,
+      metadata: {
+        companyLogo: job.company_logo ?? null,
+        logo: job.logo ?? null
+      }
     }));
   }
 
