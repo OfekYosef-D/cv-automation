@@ -75,16 +75,20 @@ pipeline {
         }
 
         stage('Test In Node Container') {
+            options {
+                timeout(time: 8, unit: 'MINUTES')
+            }
             agent {
                 docker {
                     image 'node:20-bookworm'
-                    args '-u root:root'
+                    args '-u root:root --memory=3g --cpus=2'
                     reuseNode true
                 }
             }
             steps {
                 sh 'corepack enable'
-                sh 'pnpm turbo run test --concurrency=1'
+                sh 'pnpm turbo run test --concurrency=1 --filter=!@cv/api'
+                sh 'pnpm --filter @cv/api test -- --runInBand'
             }
         }
 
