@@ -4,10 +4,15 @@ import {
   createIngestionQueue,
   createIngestionWorker,
   processIngestionJob,
-  type IngestionJobData
+  type IngestionJobData,
+  createQueryDiscoveryQueue,
+  createQueryDiscoveryWorker,
+  processQueryDiscoveryJob,
+  reconcileQueryDiscoverySchedules,
 } from "./queue";
 
-let worker: Worker | undefined;
+let ingestionWorker: Worker | undefined;
+let queryDiscoveryWorker: Worker | undefined;
 
 /**
  * Graceful shutdown handling.
@@ -21,9 +26,14 @@ async function shutdown(signal: string): Promise<void> {
   console.log(`\n[Worker] Received ${signal}, shutting down gracefully...`);
 
   try {
-    if (worker) {
-      await worker.close();
-      console.log("[Worker] BullMQ worker closed");
+    if (ingestionWorker) {
+      await ingestionWorker.close();
+      console.log("[Worker] Ingestion worker closed");
+    }
+
+    if (queryDiscoveryWorker) {
+      await queryDiscoveryWorker.close();
+      console.log("[Worker] Query discovery worker closed");
     }
   } catch (err) {
     console.error("[Worker] Error closing worker:", err);
@@ -96,6 +106,30 @@ async function scheduleRepeatableJobs(): Promise<void> {
   await queue.close();
 }
 
+async function scheduleQueryDiscoveryJobs(): Promise<void> {
+  const queue = createQueryDiscoveryQueue();
+  const enabledQueries = await prisma.jobSearchQuery.findMany({
+    where: { enabled: true },
+    orderBy: { updatedAt: "asc" }
+  });
+
+  console.log(
+    `[Worker] Found ${enabledQueries.length} saved search queries to schedule`
+  );
+
+  await reconcileQueryDiscoverySchedules(
+    queue,
+    enabledQueries.map((query) => ({
+      id: query.id,
+      tenantId: query.tenantId,
+      enabled: query.enabled,
+      cadenceSeconds: query.cadenceSeconds
+    }))
+  );
+
+  await queue.close();
+}
+
 /**
  * Start the worker.
  */
@@ -108,22 +142,38 @@ async function main(): Promise<void> {
 
   // Schedule repeatable jobs for all sources
   await scheduleRepeatableJobs();
+  await scheduleQueryDiscoveryJobs();
 
   // Create and start the worker
-  worker = createIngestionWorker(processIngestionJob);
+  ingestionWorker = createIngestionWorker(processIngestionJob);
+  queryDiscoveryWorker = createQueryDiscoveryWorker(processQueryDiscoveryJob);
 
-  worker.on("completed", (job, result) => {
+  ingestionWorker.on("completed", (job, result) => {
     console.log(
       `[Worker] Job ${job.id} completed: ${result.processedCount} jobs processed`
     );
   });
 
-  worker.on("failed", (job, error) => {
+  ingestionWorker.on("failed", (job, error) => {
     console.error(`[Worker] Job ${job?.id} failed:`, error.message);
   });
 
-  worker.on("error", (error) => {
+  ingestionWorker.on("error", (error) => {
     console.error("[Worker] Worker error:", error);
+  });
+
+  queryDiscoveryWorker.on("completed", (job, result) => {
+    console.log(
+      `[Worker] Discovery job ${job.id} completed: ${result.savedCount} jobs saved, ${result.alertCount} alerts`
+    );
+  });
+
+  queryDiscoveryWorker.on("failed", (job, error) => {
+    console.error(`[Worker] Discovery job ${job?.id} failed:`, error.message);
+  });
+
+  queryDiscoveryWorker.on("error", (error) => {
+    console.error("[Worker] Discovery worker error:", error);
   });
 
   console.log("[Worker] Worker started and listening for jobs...");

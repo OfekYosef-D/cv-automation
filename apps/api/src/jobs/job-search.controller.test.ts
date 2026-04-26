@@ -10,7 +10,9 @@ describe("JobSearchController", () => {
   };
 
   const searchService = {
-    liveSearch: jest.fn()
+    previewSearch: jest.fn(),
+    liveSearch: jest.fn(),
+    runSavedQuery: jest.fn()
   };
 
   const controller = new JobSearchController(queryService as never, searchService as never);
@@ -64,5 +66,26 @@ describe("JobSearchController", () => {
       location: "Israel"
     });
     expect(response.jobs).toHaveLength(1);
+  });
+
+  it("preview and run-now use tenant context", async () => {
+    searchService.previewSearch.mockResolvedValue({ jobs: [] });
+    searchService.runSavedQuery.mockResolvedValue({ jobs: [] });
+
+    const request = { tenantId: "tenant-preview" } as unknown as Request;
+
+    await controller.previewQuery(request, {
+      provider: "serpapi",
+      query: "software engineer",
+      sourceOrigin: "linkedin"
+    });
+    await controller.runQuery(request, "query-1");
+
+    expect(searchService.previewSearch).toHaveBeenCalledWith("tenant-preview", {
+      provider: "serpapi",
+      query: "software engineer",
+      sourceOrigin: "linkedin"
+    });
+    expect(searchService.runSavedQuery).toHaveBeenCalledWith("tenant-preview", "query-1");
   });
 });

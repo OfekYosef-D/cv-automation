@@ -6,6 +6,10 @@ interface GreenhouseJobInput {
   externalId: string;
   title: string;
   description: string;
+  company?: string;
+  salary?: string;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
   location?: string;
   url: string;
   postedAt?: Date;
@@ -41,6 +45,10 @@ export async function ingestGreenhouse(params: IngestGreenhouseParams) {
         externalId: job.externalId,
         title: job.title,
         description: job.description,
+        company: job.company,
+        salary: job.salary,
+        tags: job.tags ?? [],
+        metadata: job.metadata as never,
         location: job.location,
         url: job.url,
         postedAt: job.postedAt,
@@ -49,6 +57,10 @@ export async function ingestGreenhouse(params: IngestGreenhouseParams) {
       update: {
         title: job.title,
         description: job.description,
+        company: job.company,
+        salary: job.salary,
+        tags: job.tags ?? [],
+        metadata: job.metadata as never,
         location: job.location,
         url: job.url,
         postedAt: job.postedAt,

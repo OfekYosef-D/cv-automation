@@ -20,23 +20,50 @@ enum ApprovalStatus {
   SNOOZED
 }
 
+enum CvSourceType {
+  MANUAL
+  GOOGLE_DOCS
+}
+
+enum CvTemplateMode {
+  PLACEHOLDERS
+}
+
+enum CvVersionKind {
+  BASE
+  GENERATED
+}
+
+enum JobAlertChannel {
+  EMAIL
+}
+
+enum JobAlertStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users        User[]
-  cvs          Cv[]
-  cvVersions   CvVersion[]
-  jobSources   JobSource[]
-  jobs         Job[]
-  jobMatches   JobMatch[]
-  artefacts    AgentArtefact[]
-  approvals    Approval[]
-  consentLogs  ConsentLog[]
-  userProfile  UserProfile?
+  users            User[]
+  cvs              Cv[]
+  cvVersions       CvVersion[]
+  googleConnection GoogleConnection?
+  jobSources       JobSource[]
+  jobs             Job[]
+  jobMatches       JobMatch[]
+  artefacts        AgentArtefact[]
+  approvals        Approval[]
+  consentLogs      ConsentLog[]
+  userProfile      UserProfile?
   jobSearchQueries JobSearchQuery[]
+  jobAlertPreference JobAlertPreference?
+  jobAlerts        JobAlert[]
 }
 
 enum AuthProvider {
@@ -62,6 +89,14 @@ model Cv {
   id        String   @id @default(cuid())
   tenantId  String
   title     String
+  sourceType CvSourceType @default(MANUAL)
+  isDefault Boolean @default(false)
+  sourceDocumentId String?
+  sourceDocumentUrl String?
+  sourceDocumentTitle String?
+  templateMode CvTemplateMode?
+  placeholderSchema Json?
+  lastSyncedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -69,11 +104,34 @@ model Cv {
   versions  CvVersion[]
 }
 
+model GoogleConnection {
+  id                      String   @id @default(cuid())
+  tenantId                String   @unique
+  email                   String
+  refreshTokenCiphertext  String
+  scopes                  String[]
+  accessTokenExpiresAt    DateTime?
+  connectedAt             DateTime @default(now())
+  revokedAt               DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
 model CvVersion {
   id        String   @id @default(cuid())
   tenantId  String
   cvId      String
   content   String
+  kind      CvVersionKind @default(BASE)
+  label     String?
+  jobId     String?
+  parentVersionId String?
+  externalDocumentId String?
+  externalDocumentUrl String?
+  externalDocumentTitle String?
+  metadata  Json?
   createdAt DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
@@ -103,6 +161,10 @@ model Job {
   externalId    String
   title         String
   description   String
+  company       String?
+  salary        String?
+  tags          String[] @default([])
+  metadata      Json?
   location      String?
   url           String
   postedAt      DateTime?
@@ -115,6 +177,7 @@ model Job {
   matches   JobMatch[]
   artefacts AgentArtefact[]
   approvals Approval[]
+  alerts    JobAlert[]
 
   @@unique([jobSourceId, externalId])
 }
@@ -188,14 +251,60 @@ model JobSearchQuery {
   tenantId       String
   provider       String
   query          String
+  sourceOrigin   String   @default("all")
   location       String?
   seniority      String?
-  keywords       String[]
-  cadenceSeconds Int      @default(120)
+  includeKeywords String[]
+  excludeKeywords String[]
+  relatedTitles  Boolean  @default(true)
+  postedWithinHours Int?
+  maxResultsPerRun Int    @default(25)
+  minMatchScore  Int?
+  cadenceSeconds Int      @default(60)
   enabled        Boolean  @default(true)
   lastRunAt      DateTime?
+  lastCompletedAt DateTime?
+  lastNewJobsCount Int    @default(0)
+  lastAlertedCount Int    @default(0)
+  lastError      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
+  alerts JobAlert[]
+}
+
+model JobAlertPreference {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  emailEnabled    Boolean  @default(true)
+  emailAddress    String?
+  immediateAlerts Boolean  @default(true)
+  minMatchScore   Int?
+  cooldownSeconds Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model JobAlert {
+  id               String          @id @default(cuid())
+  tenantId         String
+  jobId            String
+  jobSearchQueryId String
+  channel          JobAlertChannel
+  dedupeKey        String
+  status           JobAlertStatus  @default(PENDING)
+  deliveryError    String?
+  metadata         Json?
+  sentAt           DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  tenant         Tenant         @relation(fields: [tenantId], references: [id])
+  job            Job            @relation(fields: [jobId], references: [id])
+  jobSearchQuery JobSearchQuery @relation(fields: [jobSearchQueryId], references: [id])
+
+  @@unique([tenantId, channel, dedupeKey])
 }

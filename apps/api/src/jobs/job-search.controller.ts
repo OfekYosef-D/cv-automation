@@ -15,7 +15,7 @@ import { JobSearchQueryCreateDto } from "./dto/job-search-query-create.dto";
 import { UpdateJobSearchQueryDto } from "./dto/update-job-search-query.dto";
 import { JobLiveSearchDto } from "./dto/job-live-search.dto";
 import { JobSearchQueryService } from "./job-search-query.service";
-import { JobSearchService, LiveSearchResponse } from "./job-search.service";
+import { JobSearchRunResponse, JobSearchService, LiveSearchResponse } from "./job-search.service";
 
 @Controller("jobs")
 export class JobSearchController {
@@ -65,6 +65,18 @@ export class JobSearchController {
     }
 
     return { ok: true };
+  }
+
+  @Post("search-queries/preview")
+  previewQuery(@Req() request: Request, @Body() dto: JobLiveSearchDto): Promise<LiveSearchResponse> {
+    const tenantId = request.tenantId!;
+    return this.jobSearchService.previewSearch(tenantId, dto);
+  }
+
+  @Post("search-queries/:id/run")
+  runQuery(@Req() request: Request, @Param("id") id: string): Promise<JobSearchRunResponse> {
+    const tenantId = request.tenantId!;
+    return this.jobSearchService.runSavedQuery(tenantId, id);
   }
 
   @Post("live")

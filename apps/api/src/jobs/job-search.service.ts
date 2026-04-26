@@ -1,275 +1,284 @@
-import crypto from "node:crypto";
-import { Injectable } from "@nestjs/common";
-import { JobSource, PrismaClient } from "@prisma/client";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { PrismaClient } from "@prisma/client";
+import type { MatchProfile } from "@cv/matching";
+import {
+  type DiscoverySearchInput,
+  type DiscoverySearchResult,
+  buildAlertDedupeKey,
+  executeDiscoverySearch,
+  persistDiscoveryJobs
+} from "@cv/shared";
+import { JobAlertsService } from "../alerts/job-alerts.service";
 import { JobLiveSearchDto } from "./dto/job-live-search.dto";
-
-interface LiveSearchResult {
-  externalId: string;
-  title: string;
-  description: string;
-  location?: string;
-  url?: string;
-  postedAt?: Date;
-}
+import { JobSearchQueryService } from "./job-search-query.service";
 
 export interface LiveSearchResponse {
   jobs: Array<{
+    id: string | null;
     externalId: string;
     title: string;
     description: string;
+    company: string | null;
+    salary: string | null;
+    tags: string[];
     location: string | null;
     url: string;
     postedAt: string | null;
     contentHash: string;
+    origin: "all" | "linkedin";
+    sourceLabel: string;
+    matchedQueryIds: string[];
+    matchScore: number | null;
+    matchExplanations: string[];
   }>;
+}
+
+export interface JobSearchRunResponse extends LiveSearchResponse {
+  fetchedCount: number;
+  savedCount: number;
+  alertCount: number;
+}
+
+function extractMatchedQueryIds(metadata: unknown): string[] {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return [];
+  }
+
+  const discovery =
+    "discovery" in metadata &&
+    metadata.discovery &&
+    typeof metadata.discovery === "object" &&
+    !Array.isArray(metadata.discovery)
+      ? (metadata.discovery as Record<string, unknown>)
+      : null;
+
+  return Array.isArray(discovery?.matchedQueryIds)
+    ? discovery.matchedQueryIds.filter((value): value is string => typeof value === "string")
+    : [];
 }
 
 @Injectable()
 export class JobSearchService {
-  constructor(private readonly prisma: PrismaClient) {}
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly jobSearchQueryService: JobSearchQueryService,
+    private readonly jobAlertsService: JobAlertsService
+  ) {}
+
+  async previewSearch(tenantId: string, dto: JobLiveSearchDto): Promise<LiveSearchResponse> {
+    const results = await this.getDiscoveryResults(tenantId, dto);
+    return {
+      jobs: results.map((job) => this.mapDiscoveryJob(job))
+    };
+  }
 
   async liveSearch(tenantId: string, dto: JobLiveSearchDto): Promise<LiveSearchResponse> {
-    const fetchedJobs = await this.fetchProviderResults(dto);
+    const results = await this.getDiscoveryResults(tenantId, dto);
+    const persisted = await persistDiscoveryJobs({
+      prisma: this.prisma,
+      tenantId,
+      provider: dto.provider,
+      jobs: results
+    });
 
-    const deduped = new Map<string, LiveSearchResult>();
-    for (const job of fetchedJobs) {
-      const contentHash = this.hashContent(job.title, job.description);
-      if (!deduped.has(contentHash)) {
-        deduped.set(contentHash, job);
-      }
+    const persistedByUrl = new Map(persisted.map((entry) => [entry.job.url, entry.job]));
+
+    return {
+      jobs: results.map((job) =>
+        this.mapDiscoveryJob(job, persistedByUrl.get(job.canonicalUrl) ?? null)
+      )
+    };
+  }
+
+  async runSavedQuery(tenantId: string, queryId: string): Promise<JobSearchRunResponse> {
+    const query = await this.jobSearchQueryService.findForTenant(tenantId, queryId);
+    if (!query) {
+      throw new NotFoundException("Search query not found.");
     }
 
-    const source = await this.ensureLiveSource(tenantId, dto.provider);
+    const input: JobLiveSearchDto = {
+      provider: query.provider as JobLiveSearchDto["provider"],
+      query: query.query,
+      location: query.location ?? undefined,
+      seniority: query.seniority ?? undefined,
+      sourceOrigin: (query.sourceOrigin as JobLiveSearchDto["sourceOrigin"]) ?? "all",
+      includeKeywords: query.includeKeywords,
+      excludeKeywords: query.excludeKeywords,
+      relatedTitles: query.relatedTitles,
+      postedWithinHours: query.postedWithinHours ?? undefined,
+      maxResultsPerRun: query.maxResultsPerRun,
+      minMatchScore: query.minMatchScore ?? undefined,
+      useProfile: true
+    };
 
-    const jobs = [] as LiveSearchResponse["jobs"];
+    try {
+      const results = await this.getDiscoveryResults(tenantId, input);
+      const persisted = await persistDiscoveryJobs({
+        prisma: this.prisma,
+        tenantId,
+        provider: input.provider,
+        queryId,
+        jobs: results
+      });
+      const alertCount = await this.createPendingAlerts(tenantId, queryId, results, persisted);
 
-    for (const job of deduped.values()) {
-      const contentHash = this.hashContent(job.title, job.description);
-      const canonicalUrl = job.url ? this.canonicalizeUrl(job.url) : null;
+      await this.prisma.jobSearchQuery.update({
+        where: { id: queryId },
+        data: {
+          lastRunAt: new Date(),
+          lastCompletedAt: new Date(),
+          lastNewJobsCount: persisted.filter((entry) => entry.isNew).length,
+          lastAlertedCount: alertCount,
+          lastError: null
+        }
+      });
 
-      if (!canonicalUrl) {
+      const persistedByUrl = new Map(persisted.map((entry) => [entry.job.url, entry.job]));
+      return {
+        fetchedCount: results.length,
+        savedCount: persisted.filter((entry) => entry.isNew).length,
+        alertCount,
+        jobs: results.map((job) =>
+          this.mapDiscoveryJob(job, persistedByUrl.get(job.canonicalUrl) ?? null)
+        )
+      };
+    } catch (error) {
+      await this.prisma.jobSearchQuery.update({
+        where: { id: queryId },
+        data: {
+          lastRunAt: new Date(),
+          lastCompletedAt: new Date(),
+          lastError: error instanceof Error ? error.message : "Unknown discovery error"
+        }
+      });
+      throw error;
+    }
+  }
+
+  private async createPendingAlerts(
+    tenantId: string,
+    queryId: string,
+    results: DiscoverySearchResult[],
+    persisted: Array<{ job: { id: string; url: string }; isNew: boolean }>
+  ): Promise<number> {
+    const preference = await this.jobAlertsService.getPreference(tenantId);
+    if (!preference.immediateAlerts) {
+      return 0;
+    }
+
+    const resultByUrl = new Map(results.map((result) => [result.canonicalUrl, result]));
+    let createdCount = 0;
+
+    for (const persistedJob of persisted) {
+      if (!persistedJob.isNew) {
         continue;
       }
 
-      await this.prisma.job.upsert({
-        where: {
-          jobSourceId_externalId: {
-            jobSourceId: source.id,
-            externalId: job.externalId
-          }
-        },
-        create: {
-          tenantId,
-          jobSourceId: source.id,
-          externalId: job.externalId,
-          title: job.title,
-          description: job.description,
-          location: job.location,
-          url: canonicalUrl,
-          postedAt: job.postedAt,
-          contentHash
-        },
-        update: {
-          title: job.title,
-          description: job.description,
-          location: job.location,
-          url: canonicalUrl,
-          postedAt: job.postedAt,
-          contentHash,
-          updatedAt: new Date()
-        }
-      });
+      const result = resultByUrl.get(persistedJob.job.url);
+      if (!result) {
+        continue;
+      }
 
-      jobs.push({
-        externalId: job.externalId,
-        title: job.title,
-        description: job.description,
-        location: job.location ?? null,
-        url: canonicalUrl,
-        postedAt: job.postedAt ? job.postedAt.toISOString() : null,
-        contentHash
-      });
-    }
+      if (
+        preference.minMatchScore !== null &&
+        result.matchScore !== null &&
+        result.matchScore < preference.minMatchScore
+      ) {
+        continue;
+      }
 
-    return { jobs };
-  }
-
-  private hashContent(title: string, description: string): string {
-    return crypto.createHash("sha256").update(`${title}::${description}`).digest("hex");
-  }
-
-  private canonicalizeUrl(raw: string): string | null {
-    const value = raw.trim();
-
-    if (!value) {
-      return null;
-    }
-
-    try {
-      const url = new URL(value);
-      url.hash = "";
-      return url.toString();
-    } catch {
-      console.warn(`[JobSearchService] Invalid URL encountered: ${raw}`);
-      return null;
-    }
-  }
-
-  private async ensureLiveSource(tenantId: string, provider: string): Promise<JobSource> {
-    const name = `live-${provider}`;
-
-    return this.prisma.jobSource.upsert({
-      where: {
-        tenantId_type_name: {
-          tenantId,
-          type: provider,
-          name
-        }
-      },
-      create: {
+      const alert = await this.jobAlertsService.createPendingAlert({
         tenantId,
-        type: provider,
-        name,
-        config: { mode: "live" }
-      },
-      update: {
-        config: { mode: "live" }
+        jobId: persistedJob.job.id,
+        jobSearchQueryId: queryId,
+        dedupeKey: buildAlertDedupeKey(result),
+        metadata: {
+          origin: result.origin ?? "all",
+          sourceLabel: result.sourceLabel ?? "unknown",
+          matchScore: result.matchScore,
+          matchExplanations: result.matchExplanations
+        }
+      });
+
+      if (alert.created) {
+        createdCount++;
       }
-    });
+    }
+
+    return createdCount;
   }
 
-  private async fetchProviderResults(dto: JobLiveSearchDto): Promise<LiveSearchResult[]> {
-    if (dto.provider === "jsearch") {
-      const apiKey = process.env.JSEARCH_API_KEY;
-      if (!apiKey) return [];
+  private async getDiscoveryResults(
+    tenantId: string,
+    dto: JobLiveSearchDto
+  ): Promise<DiscoverySearchResult[]> {
+    this.validateInput(dto);
+    const profile = dto.useProfile ? await this.loadProfile(tenantId) : null;
+    return executeDiscoverySearch(this.toDiscoveryInput(dto), profile);
+  }
 
-      const params = new URLSearchParams({ query: dto.query, page: "1", num_pages: "1" });
-
-      let payload:
-        | {
-            data?: Array<{
-              job_id?: string;
-              job_title?: string;
-              job_description?: string;
-              job_city?: string;
-              job_country?: string;
-              job_apply_link?: string;
-              job_posted_at_datetime_utc?: string;
-            }>;
-          }
-        | undefined;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10_000);
-      try {
-        const response = await fetch(`https://jsearch.p.rapidapi.com/search?${params.toString()}`, {
-          headers: {
-            "X-RapidAPI-Key": apiKey,
-            "X-RapidAPI-Host": "jsearch.p.rapidapi.com"
-          },
-          signal: controller.signal
-        });
-
-        if (!response.ok) return [];
-        payload = (await response.json()) as {
-          data?: Array<{
-            job_id?: string;
-            job_title?: string;
-            job_description?: string;
-            job_city?: string;
-            job_country?: string;
-            job_apply_link?: string;
-            job_posted_at_datetime_utc?: string;
-          }>;
-        };
-      } catch {
-        return [];
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      return (payload.data ?? [])
-        .filter((job) => job.job_id && job.job_title && job.job_apply_link)
-        .map((job) => ({
-          externalId: `js-${job.job_id!}`,
-          title: job.job_title!,
-          description: job.job_description ?? "",
-          location: [job.job_city, job.job_country].filter(Boolean).join(", ") || undefined,
-          url: job.job_apply_link!,
-          postedAt: job.job_posted_at_datetime_utc
-            ? new Date(job.job_posted_at_datetime_utc)
-            : undefined
-        }));
+  private async loadProfile(tenantId: string): Promise<MatchProfile | null> {
+    const profile = await this.prisma.userProfile.findUnique({ where: { tenantId } });
+    if (!profile) {
+      return null;
     }
 
-    if (dto.provider === "serpapi") {
-      const apiKey = process.env.SERPAPI_API_KEY;
-      if (!apiKey) return [];
+    return {
+      desiredRoles: profile.desiredRoles,
+      seniority: profile.seniority as MatchProfile["seniority"],
+      location: profile.location,
+      mustHaveSkills: profile.mustHaveSkills
+    };
+  }
 
-      const params = new URLSearchParams({
-        engine: "google_jobs",
-        q: dto.query,
-        api_key: apiKey
-      });
-      if (dto.location) params.set("location", dto.location);
+  private toDiscoveryInput(dto: JobLiveSearchDto): DiscoverySearchInput {
+    return {
+      provider: dto.provider,
+      query: dto.query,
+      location: dto.location ?? null,
+      seniority: dto.seniority ?? null,
+      sourceOrigin: dto.sourceOrigin ?? "all",
+      includeKeywords: dto.includeKeywords ?? [],
+      excludeKeywords: dto.excludeKeywords ?? [],
+      relatedTitles: dto.relatedTitles ?? true,
+      postedWithinHours: dto.postedWithinHours ?? null,
+      maxResultsPerRun: dto.maxResultsPerRun ?? 25,
+      minMatchScore: dto.minMatchScore ?? null,
+      useProfile: dto.useProfile ?? false
+    };
+  }
 
-      let payload:
-        | {
-            jobs_results?: Array<{
-              job_id?: string;
-              title?: string;
-              description?: string;
-              location?: string;
-              apply_options?: Array<{ link?: string }>;
-              related_links?: Array<{ link?: string }>;
-            }>;
-          }
-        | undefined;
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10_000);
-      try {
-        const response = await fetch(`https://serpapi.com/search.json?${params.toString()}`, {
-          signal: controller.signal
-        });
-        if (!response.ok) return [];
-
-        payload = (await response.json()) as {
-          jobs_results?: Array<{
-            job_id?: string;
-            title?: string;
-            description?: string;
-            location?: string;
-            apply_options?: Array<{ link?: string }>;
-            related_links?: Array<{ link?: string }>;
-          }>;
-        };
-      } catch {
-        return [];
-      } finally {
-        clearTimeout(timeoutId);
-      }
-
-      return (payload.jobs_results ?? [])
-        .filter((job) => job.job_id && job.title)
-        .map((job) => {
-          const targetedQuery = [job.title, job.location].filter(Boolean).join(" ");
-
-          return {
-            externalId: `serp-${job.job_id!}`,
-            title: job.title!,
-            description: job.description ?? "",
-            location: job.location,
-            url:
-              job.apply_options?.[0]?.link ||
-              job.related_links?.[0]?.link ||
-              (targetedQuery
-                ? `https://www.google.com/search?q=${encodeURIComponent(targetedQuery)}`
-                : undefined)
-          };
-        });
+  private validateInput(dto: JobLiveSearchDto): void {
+    if (dto.sourceOrigin === "linkedin" && dto.provider !== "serpapi") {
+      throw new BadRequestException("LinkedIn-origin queries require the serpapi provider.");
     }
 
-    return [];
+    if ((dto.maxResultsPerRun ?? 25) < 1) {
+      throw new BadRequestException("maxResultsPerRun must be greater than zero.");
+    }
+  }
+
+  private mapDiscoveryJob(
+    job: DiscoverySearchResult,
+    persistedJob: { id: string; metadata?: unknown } | null = null
+  ): LiveSearchResponse["jobs"][number] {
+    return {
+      id: persistedJob?.id ?? null,
+      externalId: job.externalId,
+      title: job.title,
+      description: job.description,
+      company: job.company ?? null,
+      salary: job.salary ?? null,
+      tags: job.tags ?? [],
+      location: job.location ?? null,
+      url: job.canonicalUrl,
+      postedAt: job.postedAt ? job.postedAt.toISOString() : null,
+      contentHash: job.contentHash,
+      origin: job.origin ?? "all",
+      sourceLabel: job.sourceLabel ?? "unknown",
+      matchedQueryIds: persistedJob ? extractMatchedQueryIds(persistedJob.metadata) : [],
+      matchScore: job.matchScore,
+      matchExplanations: job.matchExplanations
+    };
   }
 }
