@@ -27,6 +27,13 @@ pipeline {
                 sh 'test -f pnpm-lock.yaml'
             }
         }
+        stage('Check Agent Tools') {
+            steps {
+                sh 'node --version'
+                sh 'corepack --version'
+                sh 'pnpm --version'
+            }
+        }
 
         stage('Create Build Metadata') {
             steps {
