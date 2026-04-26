@@ -140,6 +140,23 @@ pipeline {
             }
         }
 
+        stage('Build In Node Container') {
+            options {
+                timeout(time: 10, unit: 'MINUTES')
+            }
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root --memory=4g --cpus=2'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh 'corepack enable'
+                sh 'pnpm turbo run build --concurrency=1 --filter=!@cv/api'
+            }
+        }
+
         stage('Create Build Metadata') {
             steps {
                 sh 'mkdir -p build'
