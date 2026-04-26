@@ -157,6 +157,38 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image Artifact') {
+            options {
+                timeout(time: 15, unit: 'MINUTES')
+            }
+            steps {
+                sh 'docker --version'
+                sh '''
+                    set -eu
+                    IMAGE_NAME="${APP_NAME}-worker"
+                    COMMIT_SHORT="$(printf "%s" "${GIT_COMMIT:-unknown}" | cut -c1-12)"
+                    IMAGE_TAG="${IMAGE_NAME}:build-${BUILD_NUMBER}"
+                    COMMIT_TAG="${IMAGE_NAME}:${COMMIT_SHORT}"
+
+                    docker build -f apps/worker/Dockerfile -t "${IMAGE_TAG}" -t "${COMMIT_TAG}" .
+
+                    IMAGE_ID="$(docker image inspect "${IMAGE_TAG}" --format "{{.Id}}")"
+
+                    mkdir -p build
+                    {
+                        echo "image_name=${IMAGE_NAME}"
+                        echo "image_tag=${IMAGE_TAG}"
+                        echo "commit_tag=${COMMIT_TAG}"
+                        echo "image_id=${IMAGE_ID}"
+                        echo "git_commit=${GIT_COMMIT:-unknown}"
+                        echo "jenkins_build=${BUILD_NUMBER}"
+                    } > build/image-metadata.txt
+
+                    cat build/image-metadata.txt
+                '''
+            }
+        }
+
         stage('Create Build Metadata') {
             steps {
                 sh 'mkdir -p build'

@@ -1,0 +1,12 @@
+.git
+.turbo
+.pnpm-store
+node_modules
+build
+test-results
+coverage
+dist
+.next
+.env
+.env.*
+!.env.example
