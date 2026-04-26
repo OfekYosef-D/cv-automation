@@ -46,15 +46,15 @@ pipeline {
         }
 
         stage('Quality Gates In Node Container') {
-            agent {
-                docker {
-                    image 'node:20-bookworm'
-                    args '-u root:root'
-                    reuseNode true
-                }
-            }
             parallel {
                 stage('Lint') {
+                    agent {
+                        docker {
+                            image 'node:20-bookworm'
+                            args '-u root:root'
+                            reuseNode true
+                        }
+                    }
                     steps {
                         sh 'corepack enable'
                         sh 'pnpm lint'
@@ -62,6 +62,13 @@ pipeline {
                 }
 
                 stage('Typecheck') {
+                    agent {
+                        docker {
+                            image 'node:20-bookworm'
+                            args '-u root:root'
+                            reuseNode true
+                        }
+                    }
                     steps {
                         sh 'corepack enable'
                         sh 'pnpm typecheck'
@@ -69,6 +76,13 @@ pipeline {
                 }
 
                 stage('Test') {
+                    agent {
+                        docker {
+                            image 'node:20-bookworm'
+                            args '-u root:root'
+                            reuseNode true
+                        }
+                    }
                     steps {
                         sh 'corepack enable'
                         sh 'pnpm test'
