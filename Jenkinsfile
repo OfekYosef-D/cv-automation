@@ -101,6 +101,23 @@ pipeline {
             }
         }
 
+        stage('Generate Test Reports In Node Container') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root --memory=3g --cpus=2'
+                    reuseNode true
+                }
+            }
+            steps {
+                sh 'corepack enable'
+                sh 'rm -rf test-results && mkdir -p test-results'
+                sh 'pnpm --filter @cv/matching exec vitest run --reporter=junit --outputFile=../../test-results/matching.xml'
+                sh 'pnpm --filter @cv/shared exec vitest run --reporter=junit --outputFile=../../test-results/shared.xml'
+                sh 'pnpm --filter @cv/worker exec vitest run --reporter=junit --outputFile=../../test-results/worker.xml'
+            }
+        }
+
         stage('API Tests In Node Container') {
             when {
                 expression {
@@ -136,6 +153,7 @@ pipeline {
 
     post {
         always {
+            junit testResults: 'test-results/*.xml', allowEmptyResults: true
             archiveArtifacts artifacts: 'build/*.txt', fingerprint: true, allowEmptyArchive: true
         }
 
