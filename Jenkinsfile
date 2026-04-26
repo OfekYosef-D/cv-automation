@@ -45,6 +45,38 @@ pipeline {
             }
         }
 
+        stage('Quality Gates In Node Container') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root'
+                    reuseNode true
+                }
+            }
+            parallel {
+                stage('Lint') {
+                    steps {
+                        sh 'corepack enable'
+                        sh 'pnpm lint'
+                    }
+                }
+
+                stage('Typecheck') {
+                    steps {
+                        sh 'corepack enable'
+                        sh 'pnpm typecheck'
+                    }
+                }
+
+                stage('Test') {
+                    steps {
+                        sh 'corepack enable'
+                        sh 'pnpm test'
+                    }
+                }
+            }
+        }
+
         stage('Create Build Metadata') {
             steps {
                 sh 'mkdir -p build'
