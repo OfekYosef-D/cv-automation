@@ -27,7 +27,7 @@ pipeline {
                 sh 'test -f pnpm-lock.yaml'
             }
         }
-        stage('Check Node Tools In Container') {
+        stage('Install Dependencies In Node Container') {
             agent {
                 docker {
                     image 'node:20-bookworm'
@@ -40,6 +40,8 @@ pipeline {
                 sh 'corepack --version'
                 sh 'corepack enable'
                 sh 'pnpm --version'
+                sh 'pnpm config set store-dir .pnpm-store'
+                sh 'pnpm install --frozen-lockfile'
             }
         }
 
