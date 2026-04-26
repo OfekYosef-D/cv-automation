@@ -27,10 +27,18 @@ pipeline {
                 sh 'test -f pnpm-lock.yaml'
             }
         }
-        stage('Check Agent Tools') {
+        stage('Check Node Tools In Container') {
+            agent {
+                docker {
+                    image 'node:20-bookworm'
+                    args '-u root:root'
+                    reuseNode true
+                }
+            }
             steps {
                 sh 'node --version'
                 sh 'corepack --version'
+                sh 'corepack enable'
                 sh 'pnpm --version'
             }
         }
