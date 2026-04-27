@@ -18,6 +18,11 @@ pipeline {
             defaultValue: false,
             description: 'Use demo Jenkins credentials to simulate Docker registry login and image push.'
         )
+        choice(
+            name: 'DEPLOY_ENV',
+            choices: ['none', 'dev', 'staging', 'production'],
+            description: 'Choose an environment for deployment simulation.'
+        )
     }
 
     environment {
@@ -236,6 +241,74 @@ pipeline {
                         cat build/registry-simulation.txt
                     '''
                 }
+            }
+        }
+
+        stage('Production Deployment Approval') {
+            when {
+                expression {
+                    return params.DEPLOY_ENV == 'production'
+                }
+            }
+            options {
+                timeout(time: 5, unit: 'MINUTES')
+            }
+            steps {
+                input message: "Approve simulated production deployment for build ${env.BUILD_NUMBER}?",
+                    ok: 'Approve production simulation'
+            }
+        }
+
+        stage('Simulate Deployment') {
+            when {
+                expression {
+                    return params.DEPLOY_ENV != 'none'
+                }
+            }
+            steps {
+                sh '''
+                    set -eu
+                    IMAGE_NAME="${APP_NAME}-worker"
+                    IMAGE_TAG="${IMAGE_NAME}:build-${BUILD_NUMBER}"
+                    DEPLOY_TARGET="${DEPLOY_ENV}"
+
+                    docker image inspect "${IMAGE_TAG}" >/dev/null
+
+                    case "${DEPLOY_TARGET}" in
+                        dev)
+                            DEPLOY_URL="https://dev.example.local/cv-automation"
+                            APPROVAL_REQUIRED="false"
+                            ;;
+                        staging)
+                            DEPLOY_URL="https://staging.example.local/cv-automation"
+                            APPROVAL_REQUIRED="false"
+                            ;;
+                        production)
+                            DEPLOY_URL="https://prod.example.local/cv-automation"
+                            APPROVAL_REQUIRED="true"
+                            ;;
+                        *)
+                            echo "Unsupported deployment target: ${DEPLOY_TARGET}" >&2
+                            exit 1
+                            ;;
+                    esac
+
+                    echo "Simulating deployment to ${DEPLOY_TARGET}"
+                    echo "Simulating: deploy ${IMAGE_TAG} to ${DEPLOY_URL}"
+
+                    mkdir -p build
+                    {
+                        echo "deploy_status=simulated"
+                        echo "deploy_environment=${DEPLOY_TARGET}"
+                        echo "deploy_url=${DEPLOY_URL}"
+                        echo "approval_required=${APPROVAL_REQUIRED}"
+                        echo "image_tag=${IMAGE_TAG}"
+                        echo "git_commit=${GIT_COMMIT:-unknown}"
+                        echo "jenkins_build=${BUILD_NUMBER}"
+                    } > "build/deploy-${DEPLOY_TARGET}.txt"
+
+                    cat "build/deploy-${DEPLOY_TARGET}.txt"
+                '''
             }
         }
 
