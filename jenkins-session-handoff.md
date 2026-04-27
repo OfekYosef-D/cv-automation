@@ -1,6 +1,6 @@
 # Jenkins Session Handoff
 
-This file is meant for opening a new chat/session and continuing the Jenkins learning path without losing context.
+This file is meant for opening a new chat/session and continuing the Jenkins learning path without losing context..
 
 ## Goal Of The Conversation
 
