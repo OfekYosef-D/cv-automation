@@ -1,14 +1,12 @@
 # Jenkins Session Handoff
 
-This file is meant for opening a new chat/session and continuing the Jenkins learning path without losing context.
+This file is for opening a new chat/session and continuing the Jenkins learning path without losing context.
 
-## Goal Of The Conversation
+## Goal
 
-The user is preparing for a DevOps student interview with a team leader on Tuesday at 11:00.
+The user is preparing for a DevOps student interview with a team leader.
 
-The goal is to learn Jenkins quickly and practically through hands-on work, while building enough understanding to explain the concepts clearly in an interview.
-
-The learning style should stay interactive:
+The goal is fast, practical Jenkins learning:
 
 - Explain the concept.
 - Apply it in the local project.
@@ -16,13 +14,15 @@ The learning style should stay interactive:
 - Debug real failures.
 - Translate the result into interview-ready language.
 
-## User Preference
+## User Style Preference
 
-The user likes hands-on learning.
+The user likes hands-on learning and wants concise explanations with practical meaning.
 
-For technical implementation and code work, English is fine.
+Technical implementation can be in English.
 
-For interview explanations and personal summaries, the user often prefers Hebrew, but with common Israeli tech loanwords where natural, for example:
+When explaining in Hebrew, use natural Israeli high-tech speech and avoid mixing raw English words inside Hebrew sentences because left-to-right and right-to-left text makes sentences hard to read.
+
+Preferred Hebrew wording:
 
 - ג׳נקינס
 - דוקר
@@ -30,12 +30,32 @@ For interview explanations and personal summaries, the user often prefers Hebrew
 - פייפליין
 - ריפוזיטורי
 - בילד
-- טסט
+- טסטים
 - דיפלוי
 - ארטיפקט
 - קרדנשלס
-
-Avoid awkward literal translations when Israeli tech speech normally uses the borrowed term.
+- אימג' של דוקר
+- דב
+- סטייג'ינג
+- פרודקשן
+- קומיט
+- גיט
+- גיטהאב
+- ברנצ׳
+- ברנצ׳ים
+- פיצ׳ר ברנצ׳
+- מאסטר
+- ריליס
+- אפרובל
+- טאג
+- פול ריקווסט
+- מרג׳
+- קונפיגורציה
+- סביבה
+- וובהוק
+- אנג׳ין־אקס
+- אנג׳ירוק
+- ריוורס פרוקסי
 
 ## Workspace
 
@@ -45,395 +65,373 @@ Project path:
 c:\Coding\Fullstack Projects\cv-automation
 ```
 
-Main files touched during the session:
+Important files:
 
 ```text
 Jenkinsfile
-.dockerignore
 jenkins/Dockerfile
+nginx/jenkins.conf
 jenkins-learning-summary.md
 jenkins-session-handoff.md
 ```
 
-## Current Jenkins Setup
+## Current Local Jenkins Setup
 
 Jenkins runs locally in Docker.
 
-The Jenkins container was customized so it can run Docker-based pipeline stages:
+Container:
 
-- A local Jenkins image was created from `jenkins/Dockerfile`.
-- The image installs the Docker CLI.
-- Jenkins is run with the host Docker socket mounted.
-- For the local learning setup, Jenkins was run as root so it could access the Docker socket.
-- The same `jenkins_home` volume is used, so existing Jenkins jobs/config remain.
+```text
+jenkins
+```
 
-Important caveat:
+Image:
 
-This is acceptable for local learning, but not ideal production security. In a real company, prefer dedicated agents, correct Docker group permissions, Kubernetes agents, or other controlled agent setups.
+```text
+local-jenkins-docker-cli
+```
 
-## Current Jenkins Job
+The custom Jenkins image installs Docker CLI. Jenkins runs with the host Docker socket mounted, so it can start Node containers and build Docker images.
 
-The Jenkins job is:
+Local learning caveat:
+
+Running Jenkins as root with Docker socket access is acceptable for this local lab, but not production-safe. In a real company, prefer dedicated agents, controlled Docker permissions, Kubernetes agents, or locked-down runners.
+
+Useful commands:
+
+```powershell
+docker start jenkins
+docker logs -f jenkins
+docker stop jenkins
+```
+
+## Current Jenkins Jobs
+
+Old SCM pipeline job:
 
 ```text
 cv-automation-from-scm
 ```
 
-It is configured as:
+Current important job:
 
 ```text
-Pipeline script from SCM
-SCM: Git
-Repository: https://github.com/OfekYosef-D/cv-automation.git
-Branch: */master
+cv-automation-multibranch
+```
+
+It is a Multibranch Pipeline using GitHub Branch Source.
+
+Current source:
+
+```text
+Owner: OfekYosef-D
+Repository: cv-automation
 Script Path: Jenkinsfile
 ```
 
-The job currently reads the `Jenkinsfile` from GitHub.
+It currently discovers:
 
-## Current Pipeline Capabilities
+- branches
+- pull requests from origin
 
-The current `Jenkinsfile` does the following:
+Fork pull requests were removed/avoided for safety because the repo is public and running untrusted fork code with local Docker socket access is risky.
 
-1. Prints basic build context.
-2. Inspects the workspace and verifies important files exist.
-3. Runs Node/pnpm work inside `node:20-bookworm` Docker containers.
-4. Installs dependencies with `pnpm install --frozen-lockfile`.
+Only `master` currently remains after branch cleanup.
+
+## Current Jenkinsfile Capabilities
+
+The pipeline currently:
+
+1. Prints build context.
+2. Inspects workspace.
+3. Runs Node/pnpm stages inside `node:20-bookworm` Docker containers.
+4. Installs dependencies with frozen lockfile.
 5. Runs lint.
-6. Runs typecheck.
-7. Runs stable tests while excluding `@cv/api` by default.
-8. Generates JUnit XML test reports for selected Vitest packages.
-9. Publishes test reports in Jenkins with `junit`.
-10. Optionally runs API tests if `RUN_API_TESTS=true`.
-11. Runs a build stage for non-API packages.
-12. Builds a Docker image for the worker using `apps/worker/Dockerfile`.
-13. Writes Docker image metadata to `build/image-metadata.txt`.
-14. Writes general build metadata to `build/metadata.txt`.
-15. Archives `build/*.txt` as Jenkins artifacts.
+6. Runs TypeScript typecheck.
+7. Runs stable tests excluding `@cv/api` by default.
+8. Generates JUnit XML reports.
+9. Optionally runs API tests with `RUN_API_TESTS=true`.
+10. Builds non-API packages.
+11. Builds a real worker Docker image from `apps/worker/Dockerfile`.
+12. Writes image metadata to `build/image-metadata.txt`.
+13. Optionally simulates registry push with Jenkins credentials.
+14. Optionally simulates deployment to dev/staging/production.
+15. Requires manual approval before production deployment simulation.
+16. Writes deployment metadata to `build/deploy-<env>.txt`.
+17. Archives `build/*.txt`.
+18. Publishes JUnit test reports in `post { always { ... } }`.
 
-## Current Parameter
-
-The pipeline has this parameter:
+## Current Parameters
 
 ```text
 RUN_API_TESTS
 ```
 
-Default:
+Default: `false`
+
+Reason: API tests were too heavy for local Jenkins/Docker memory.
 
 ```text
-false
+SIMULATE_REGISTRY_PUSH
 ```
 
-Reason:
+Default: `false`
 
-The API Jest test suite caused memory pressure in the local Jenkins/Docker environment. It should stay disabled by default while learning Jenkins concepts.
-
-## Important Failures Already Debugged
-
-### Browser 431 Error
-
-Opening `localhost:8080` initially returned a 431 error.
-
-Root cause:
-
-Browser cookies/site data for localhost were too large or polluted.
-
-Fix:
-
-Clear browser site data/cookies or use `127.0.0.1`.
-
-Learning:
-
-Jenkins was reachable; the browser request was the issue.
-
-### Node Not Found
-
-The Jenkins pipeline failed with:
-
-```text
-node: not found
-exit code 127
-```
-
-Root cause:
-
-The Jenkins container did not have Node installed.
-
-Fix:
-
-Run Node stages inside a Docker agent using `node:20-bookworm`.
-
-Learning:
-
-The `Jenkinsfile` defines what to run; the agent environment determines what can actually run.
-
-### Docker CLI / Docker Socket
-
-To use Docker agents, Jenkins needed access to Docker.
-
-Actions taken:
-
-- Built a custom local Jenkins image with Docker CLI.
-- Mounted `/var/run/docker.sock`.
-- Ran Jenkins as root for local learning.
-
-Learning:
-
-Jenkins inside Docker needs access to the host Docker daemon if it is going to start other containers.
-
-### Git Safe Directory
-
-After restarting Jenkins as root, Git failed because existing workspaces were owned by the previous `jenkins` user.
-
-Root cause:
-
-Git detected dubious ownership.
-
-Fix:
-
-Marked Jenkins workspace/cache directories as safe in Git config inside the Jenkins container.
-
-Learning:
-
-Changing the runtime user affects Git workspace trust and file ownership.
-
-### Parallel Quality Gates Killed Jenkins
-
-Running lint, typecheck, and tests in parallel created multiple Node containers and overloaded Docker Desktop.
-
-Symptom:
-
-Jenkins exited with code 137.
-
-Fix:
-
-Run quality gates sequentially and add timeouts/resource limits.
-
-Learning:
-
-Parallel CI is useful on strong infrastructure, but local Jenkins may need sequential stages.
-
-### API Jest Tests Exhausted Memory
-
-The `@cv/api` Jest suite failed with worker `SIGKILL` and later Node heap out-of-memory.
-
-Root cause:
-
-The NestJS/API test suite loads heavy TypeScript/Jest/Prisma/Nest dependencies and exceeds local CI memory limits.
-
-Decision:
-
-Skip API tests by default using `RUN_API_TESTS=false`.
-
-Learning:
-
-Not every CI failure is a code bug. Some are resource/configuration/environment failures.
-
-## Current Build Artifacts
-
-Jenkins currently archives:
-
-```text
-build/metadata.txt
-build/image-metadata.txt
-```
-
-The Docker image itself does not appear as a Jenkins file artifact. It is stored in the local Docker daemon.
-
-To inspect locally:
-
-```powershell
-docker images cv-automation-worker
-```
-
-## Concepts Already Covered
-
-The user has already learned and practiced:
-
-- Jenkins jobs and builds.
-- Jenkins workspaces.
-- Controllers and agents at a basic level.
-- Declarative Pipeline syntax.
-- Stages and steps.
-- Shell steps.
-- Exit codes.
-- Console output.
-- `post` actions.
-- Artifacts.
-- Test reports.
-- Parameters.
-- Conditional stages.
-- Manual approval gates.
-- Jenkins Credentials.
-- Groovy sandbox.
-- Pipeline as Code with `Jenkinsfile`.
-- Pipeline from SCM.
-- Docker-based agents.
-- Agent tooling and missing tools.
-- Dependency install with pnpm and frozen lockfile.
-- Lint/typecheck/test quality gates.
-- CI resource pressure.
-- Timeouts and resource limits.
-- JUnit XML test reporting.
-- Build stage.
-- Docker image build stage.
-- Tags vs image IDs/digests conceptually.
-
-## Next Steps To Continue
-
-Continue from here:
-
-### 1. Credentials And Registry Practice
-
-The last planned next step was credentials plus image push simulation.
-
-The user did not read the previous credentials explanation in detail and explicitly said they had not read it.
-
-Recommended approach:
-
-First do a fake/safe registry credential exercise:
-
-- In Jenkins, create a username/password credential.
-- Suggested ID:
+Uses Jenkins credential:
 
 ```text
 demo-registry-login
 ```
 
-- Username:
+This simulates Docker registry login/tag/push without exposing the secret and without pushing to a real registry.
 
 ```text
-demo-user
+DEPLOY_ENV
 ```
 
-- Password:
+Choices:
 
 ```text
-fake-registry-token-123
+none
+dev
+staging
+production
 ```
 
-Then add a stage that uses `withCredentials` to simulate registry login/push without exposing the secret.
+`production` triggers a manual `input` approval gate before simulated deployment.
 
-Explain that the real version would be:
+## Credentials Practiced
 
-- `docker login`
-- `docker push`
-- record registry digest
-
-Do not push to a real registry unless the user wants it.
-
-### 2. Real Registry Push
-
-Optional after fake credentials:
-
-Use GitHub Container Registry or Docker Hub.
-
-Teach:
-
-- registry credentials
-- image tags
-- immutable digest after push
-- why deployment should use a pushed image, not just a local image
-
-### 3. Deployment Simulation
-
-Add a deployment simulation stage:
-
-- `dev` deploy automatic
-- `staging` deploy parameterized
-- `prod` requires manual `input`
-
-No real production deploy needed.
-
-Teach:
-
-- promotion
-- approval gates
-- environment-specific behavior
-- release traceability
-
-### 4. Multibranch Pipeline
-
-Teach Jenkins Multibranch Pipeline:
-
-- Jenkins discovers branches.
-- Each branch can run its own `Jenkinsfile`.
-- PR builds vs main branch builds.
-
-This is interview-relevant.
-
-### 5. Webhooks
-
-Teach:
-
-- right now builds are manual
-- real CI usually starts from GitHub webhook
-- push/PR triggers Jenkins build
-
-### 6. Update Summary File At End
-
-At the end of the next session, update:
+Demo registry credential:
 
 ```text
-jenkins-learning-summary.md
+ID: demo-registry-login
+Kind: Username with password
+Username: demo-user
+Password: fake-registry-token-123
 ```
 
-Add:
+Learning:
 
-- credentials/registry learning
-- deployment simulation
-- multibranch
-- webhooks
+The Jenkinsfile references credential IDs, not secret values. `withCredentials` injects secrets only inside a scoped block.
 
-Keep it in first person, interview-ready Hebrew.
+## Docker Image Learning
 
-## Hebrew Explanation Style Preference
+The pipeline builds a real Docker image:
 
-When explaining Jenkins/DevOps concepts in Hebrew, use natural Israeli high-tech speech instead of formal or awkward translations.
+```text
+cv-automation-worker:build-<BUILD_NUMBER>
+cv-automation-worker:<commit-short>
+```
 
-Preferred wording examples:
+The image is stored in the local Docker daemon, not as a Jenkins file artifact.
 
-- אימג' של דוקר, not "Docker Image"
-- דב, not `dev`
-- סטייג'ינג, not `staging`
-- פרודקשן, not `production`
-- קומיט, not `commit`
-- בילד
-- טסטים
-- דיפלוי
-- פייפליין
-- ריפוזיטורי
-- קרדנשלס
+Jenkins archives metadata about the image, not the image itself.
 
-Use this style for interview explanations and personal summaries.
+Worker image command:
 
-Avoid mixing raw English words inside Hebrew sentences because left-to-right and right-to-left text can make the sentence hard to read. In Hebrew explanations, prefer Hebrew transliteration for common technical terms, including:
+```text
+tsx apps/worker/src/main.ts
+```
 
-- אס-סי-אם, not `SCM`
-- גיט, not `Git`
-- גיטהאב, not `GitHub`
-- ברנצ׳, not `branch`
-- ברנצ׳ים, not `branches`
-- פיצ׳ר ברנצ׳, not `feature branch`
-- מיין or מאסטר, not `main` / `master`
-- ריליס, not `release`
-- אפרובל, not `approval`
-- טאג, not `tag`
-- פול ריקווסט, not `pull request`
-- מרג׳, not `merge`
-- קונפיגורציה, not `configuration`
-- אנוויירמנט or סביבה, not `environment`
+If run directly, it may fail without runtime dependencies like Redis, database URL, and environment variables.
 
-## User’s Interview Story So Far
+The user cleaned old `cv-automation-worker:*` images to free disk space.
+
+## Deployment Simulation Learning
+
+The pipeline simulates deployment by environment.
+
+Concepts covered:
+
+- environments are runtime targets, not branches
+- dev/staging/production are deployment environments
+- branches can be used as rules to decide where to deploy
+- build once, promote the same artifact
+- production should require approval
+- deployment metadata gives traceability
+
+Current simulation uses the locally built image. In real deployment, the image should first be pushed to a registry, and deployment should pull the image from the registry.
+
+## Multibranch Pipeline Learning
+
+The user created:
+
+```text
+cv-automation-multibranch
+```
+
+Concepts covered:
+
+- multibranch scans repository branches
+- only branches with a Jenkinsfile at the configured script path are relevant
+- branch deletion in GitHub removes branches from multibranch after scan
+- merge does not automatically delete a branch
+- old branches were cleaned locally and remotely
+- only `master` remains
+
+Important distinction:
+
+```text
+scan = discover branches / PRs / Jenkinsfiles / changes
+build = run the Jenkinsfile
+```
+
+A scan does not always rebuild everything.
+
+## Webhook / NGINX / ngrok Setup
+
+Jenkins local URL:
+
+```text
+http://localhost:8080
+```
+
+NGINX container:
+
+```text
+jenkins-nginx
+```
+
+NGINX listens locally on port 80 and proxies to Jenkins:
+
+```text
+http://jenkins:8080
+```
+
+Docker network:
+
+```text
+jenkins-net
+```
+
+ngrok exposes local NGINX:
+
+```text
+ngrok http 80
+```
+
+Current ngrok URL during the session:
+
+```text
+https://dimmer-uncrown-related.ngrok-free.dev
+```
+
+GitHub webhook payload URL:
+
+```text
+https://dimmer-uncrown-related.ngrok-free.dev/github-webhook/
+```
+
+Webhook flow:
+
+```text
+GitHub -> ngrok -> NGINX -> Jenkins
+```
+
+The webhook works. Jenkins logs showed:
+
+```text
+Received PushEvent
+Push event to branch master
+```
+
+Build number 3 was triggered by a push to `master`.
+
+## Reverse Proxy Debugging
+
+Problem seen:
+
+```text
+It appears that your reverse proxy set up is broken.
+```
+
+Root cause:
+
+The user accessed Jenkins via:
+
+```text
+http://localhost:8080
+```
+
+while Jenkins was configured with public URL:
+
+```text
+https://dimmer-uncrown-related.ngrok-free.dev/
+```
+
+That bypasses NGINX/ngrok and creates a mismatch.
+
+When accessing Jenkins through the ngrok URL, the warning did not appear and the webhook-triggered build was visible.
+
+NGINX config was updated to pass correct external HTTPS headers:
+
+```nginx
+proxy_set_header Host $http_host;
+proxy_set_header X-Forwarded-Host $http_host;
+proxy_set_header X-Forwarded-Port 443;
+proxy_set_header X-Forwarded-Proto https;
+proxy_set_header X-Forwarded-Ssl on;
+```
+
+## GitHub API Rate Limiting Issue
+
+When the multibranch job used GitHub Branch Source without credentials, Jenkins used anonymous GitHub API access:
+
+```text
+Connecting to https://api.github.com with no credentials, anonymous access
+Jenkins-Imposed API Limiter
+Sleeping for several minutes
+```
+
+This made it look like the webhook did nothing, but the build was actually delayed.
+
+Next recommended fix:
+
+Create GitHub credentials in Jenkins and configure the GitHub Branch Source to use them.
+
+This teaches:
+
+- GitHub API credentials
+- rate limits
+- why even public repositories benefit from authenticated API access in CI
+
+## Important Failures Already Debugged
+
+- Browser 431 error from polluted localhost cookies.
+- Node not found on Jenkins agent.
+- Jenkins-in-Docker needing Docker CLI and Docker socket.
+- Git dubious ownership after changing Jenkins runtime user.
+- Local resource pressure from parallel quality gates.
+- API Jest tests exhausting memory.
+- Docker image cleanup.
+- Branch cleanup after old merged PRs.
+- Webhook reached Jenkins but build appeared delayed due to GitHub API limiter.
+- Reverse proxy warning caused by accessing Jenkins through localhost instead of the public proxy URL.
+
+## Current Best Next Steps
+
+1. Add GitHub API credential/token to Jenkins.
+2. Configure `cv-automation-multibranch` GitHub Branch Source to use that credential.
+3. Re-test webhook with a small push.
+4. Optionally add PR test flow:
+   - create feature branch
+   - open pull request
+   - see Jenkins build PR
+5. Optional real registry push:
+   - GitHub Container Registry or Docker Hub
+   - push image
+   - record digest
+6. Optional real deployment concept:
+   - Docker Compose, remote server, or Kubernetes overview.
+7. Update `jenkins-learning-summary.md` after each meaningful learning step.
+
+## Interview Story So Far
 
 The user should be able to say:
 
 ```text
-I started learning Jenkins hands-on before the job.
-I ran Jenkins locally with Docker.
-I created simple pipelines, then moved to Pipeline as Code with a Jenkinsfile from GitHub.
-I added dependency install, lint, typecheck, tests, test reports, build, artifacts, and Docker image build.
-I debugged real CI issues: missing Node on the agent, Docker access, Git workspace ownership, memory pressure, and heavy Jest tests.
-The main thing I learned is that Jenkins is not just running commands. A good pipeline needs a reproducible agent environment, clear stages, safe credentials, test visibility, artifacts, and traceability.
+I learned Jenkins hands-on by running it locally with Docker. I started with simple pipelines, then moved to a Jenkinsfile from GitHub. I added dependency install, lint, typecheck, tests, reports, build, artifacts, Docker image build, credentials, registry push simulation, deployment simulation, manual approval, multibranch pipeline, and GitHub webhooks through NGINX and ngrok.
+
+I also debugged real CI issues: missing tools on the agent, Docker socket access, Git ownership, local memory pressure, heavy Jest tests, stale branches, reverse proxy URL mismatch, and GitHub API rate limiting. The main thing I learned is that a good pipeline is not just commands. It needs reproducible agents, clear stages, safe credentials, reports, artifacts, traceability, triggers, and a secure path from source control to CI.
 ```
