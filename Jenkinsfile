@@ -13,6 +13,11 @@ pipeline {
             defaultValue: false,
             description: 'Run @cv/api Jest tests. Disabled by default for local Jenkins stability.'
         )
+        booleanParam(
+            name: 'SIMULATE_REGISTRY_PUSH',
+            defaultValue: false,
+            description: 'Use demo Jenkins credentials to simulate Docker registry login and image push.'
+        )
     }
 
     environment {
@@ -186,6 +191,51 @@ pipeline {
 
                     cat build/image-metadata.txt
                 '''
+            }
+        }
+
+        stage('Simulate Registry Push With Credentials') {
+            when {
+                expression {
+                    return params.SIMULATE_REGISTRY_PUSH
+                }
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'demo-registry-login',
+                        usernameVariable: 'REGISTRY_USERNAME',
+                        passwordVariable: 'REGISTRY_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+                        IMAGE_NAME="${APP_NAME}-worker"
+                        LOCAL_TAG="${IMAGE_NAME}:build-${BUILD_NUMBER}"
+                        REGISTRY_HOST="demo-registry.local"
+                        REMOTE_TAG="${REGISTRY_HOST}/${IMAGE_NAME}:build-${BUILD_NUMBER}"
+
+                        test -n "${REGISTRY_USERNAME}"
+                        test -n "${REGISTRY_PASSWORD}"
+                        docker image inspect "${LOCAL_TAG}" >/dev/null
+
+                        echo "Simulating registry login as ${REGISTRY_USERNAME}"
+                        echo "Simulating: docker tag ${LOCAL_TAG} ${REMOTE_TAG}"
+                        echo "Simulating: docker push ${REMOTE_TAG}"
+
+                        mkdir -p build
+                        {
+                            echo "registry_host=${REGISTRY_HOST}"
+                            echo "registry_username=${REGISTRY_USERNAME}"
+                            echo "local_tag=${LOCAL_TAG}"
+                            echo "remote_tag=${REMOTE_TAG}"
+                            echo "push_status=simulated"
+                            echo "jenkins_build=${BUILD_NUMBER}"
+                        } > build/registry-simulation.txt
+
+                        cat build/registry-simulation.txt
+                    '''
+                }
             }
         }
 
