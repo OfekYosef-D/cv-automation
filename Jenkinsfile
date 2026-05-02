@@ -18,6 +18,11 @@ pipeline {
             defaultValue: false,
             description: 'Use demo Jenkins credentials to simulate Docker registry login and image push.'
         )
+        booleanParam(
+            name: 'PUSH_IMAGE',
+            defaultValue: false,
+            description: 'Push the worker Docker image to GitHub Container Registry using Jenkins credentials.'
+        )
         choice(
             name: 'DEPLOY_ENV',
             choices: ['none', 'dev', 'staging', 'production'],
@@ -28,6 +33,8 @@ pipeline {
     environment {
         APP_NAME = 'cv-automation'
         CI = 'true'
+        REGISTRY_HOST = 'ghcr.io'
+        REGISTRY_OWNER = 'ofekyosef-d'
         TURBO_TELEMETRY_DISABLED = '1'
     }
 
@@ -239,6 +246,66 @@ pipeline {
                         } > build/registry-simulation.txt
 
                         cat build/registry-simulation.txt
+                    '''
+                }
+            }
+        }
+
+        stage('Push Worker Image To GHCR') {
+            when {
+                expression {
+                    return params.PUSH_IMAGE
+                }
+            }
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'ghcr-login',
+                        usernameVariable: 'REGISTRY_USERNAME',
+                        passwordVariable: 'REGISTRY_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        set -eu
+                        IMAGE_NAME="${APP_NAME}-worker"
+                        COMMIT_SHORT="$(printf "%s" "${GIT_COMMIT:-unknown}" | cut -c1-12)"
+                        LOCAL_BUILD_TAG="${IMAGE_NAME}:build-${BUILD_NUMBER}"
+                        LOCAL_COMMIT_TAG="${IMAGE_NAME}:${COMMIT_SHORT}"
+                        REMOTE_IMAGE="${REGISTRY_HOST}/${REGISTRY_OWNER}/${IMAGE_NAME}"
+                        REMOTE_BUILD_TAG="${REMOTE_IMAGE}:build-${BUILD_NUMBER}"
+                        REMOTE_COMMIT_TAG="${REMOTE_IMAGE}:${COMMIT_SHORT}"
+
+                        docker image inspect "${LOCAL_BUILD_TAG}" >/dev/null
+                        docker image inspect "${LOCAL_COMMIT_TAG}" >/dev/null
+
+                        printf "%s" "${REGISTRY_PASSWORD}" | docker login "${REGISTRY_HOST}" \
+                            --username "${REGISTRY_USERNAME}" \
+                            --password-stdin
+
+                        docker tag "${LOCAL_BUILD_TAG}" "${REMOTE_BUILD_TAG}"
+                        docker tag "${LOCAL_COMMIT_TAG}" "${REMOTE_COMMIT_TAG}"
+                        docker push "${REMOTE_BUILD_TAG}"
+                        docker push "${REMOTE_COMMIT_TAG}"
+                        docker logout "${REGISTRY_HOST}"
+
+                        REPO_DIGESTS="$(docker image inspect "${REMOTE_BUILD_TAG}" --format "{{json .RepoDigests}}" || true)"
+
+                        mkdir -p build
+                        {
+                            echo "registry_host=${REGISTRY_HOST}"
+                            echo "registry_owner=${REGISTRY_OWNER}"
+                            echo "registry_username=${REGISTRY_USERNAME}"
+                            echo "local_build_tag=${LOCAL_BUILD_TAG}"
+                            echo "local_commit_tag=${LOCAL_COMMIT_TAG}"
+                            echo "remote_build_tag=${REMOTE_BUILD_TAG}"
+                            echo "remote_commit_tag=${REMOTE_COMMIT_TAG}"
+                            echo "repo_digests=${REPO_DIGESTS}"
+                            echo "push_status=pushed"
+                            echo "git_commit=${GIT_COMMIT:-unknown}"
+                            echo "jenkins_build=${BUILD_NUMBER}"
+                        } > build/registry-push.txt
+
+                        cat build/registry-push.txt
                     '''
                 }
             }
