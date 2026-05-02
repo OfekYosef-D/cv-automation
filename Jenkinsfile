@@ -33,6 +33,8 @@ pipeline {
     environment {
         APP_NAME = 'cv-automation'
         CI = 'true'
+        COREPACK_ENABLE_DOWNLOAD_PROMPT = '0'
+        COREPACK_HOME = "${WORKSPACE}/.corepack"
         REGISTRY_HOST = 'ghcr.io'
         REGISTRY_OWNER = 'ofekyosef-d'
         TURBO_TELEMETRY_DISABLED = '1'
@@ -65,9 +67,11 @@ pipeline {
             }
             steps {
                 sh 'node --version'
-                sh 'corepack --version'
-                sh 'corepack enable'
-                sh 'pnpm --version'
+                retry(3) {
+                    sh 'corepack --version'
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'pnpm config set store-dir .pnpm-store'
                 sh 'pnpm install --frozen-lockfile'
             }
@@ -82,7 +86,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'corepack enable'
+                retry(3) {
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'pnpm lint'
             }
         }
@@ -96,7 +103,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'corepack enable'
+                retry(3) {
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'pnpm typecheck'
             }
         }
@@ -113,7 +123,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'corepack enable'
+                retry(3) {
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'pnpm turbo run test --concurrency=1 --filter=!@cv/api'
             }
         }
@@ -127,7 +140,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'corepack enable'
+                retry(3) {
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'rm -rf test-results && mkdir -p test-results'
                 sh 'pnpm --filter @cv/matching exec vitest run --reporter=junit --outputFile=../../test-results/matching.xml'
                 sh 'pnpm --filter @cv/shared exec vitest run --reporter=junit --outputFile=../../test-results/shared.xml'
@@ -152,7 +168,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'corepack enable'
+                retry(3) {
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'NODE_OPTIONS=--max-old-space-size=3072 pnpm --filter @cv/api test -- --runInBand'
             }
         }
@@ -169,7 +188,10 @@ pipeline {
                 }
             }
             steps {
-                sh 'corepack enable'
+                retry(3) {
+                    sh 'corepack enable'
+                    sh 'pnpm --version'
+                }
                 sh 'pnpm turbo run build --concurrency=1 --filter=!@cv/api'
             }
         }
